@@ -1,0 +1,8 @@
+-- +goose Up
+CREATE TABLE IF NOT EXISTS genres(
+    genre_id BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    genre_name VARCHAR(20) NOT NULL UNIQUE
+);
+
+-- +goose Down
+DROP TABLE IF EXISTS genres;
