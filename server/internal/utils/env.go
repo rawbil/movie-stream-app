@@ -13,6 +13,10 @@ type DBConfig struct {
 	ParseTime bool
 }
 
+type ServerConfig struct {
+	ServerAddr string
+}
+
 func DBConfigFunc() *DBConfig {
 	return &DBConfig{
 		Name:      GetEnv("DB_NAME", "stream_app"),
@@ -20,6 +24,12 @@ func DBConfigFunc() *DBConfig {
 		Addr:      fmt.Sprintf("%s:%s", GetEnv("DB_HOST", "localhost"), GetEnv("DB_PORT", "3306")),
 		Username:  GetEnv("DB_USERNAME", "root"),
 		ParseTime: GetEnv("DB_PARSE_TIME", "true") == "true",
+	}
+}
+
+func ServerConfigFunc() *ServerConfig {
+	return &ServerConfig{
+		ServerAddr: GetEnv("SERVER_ADDR", ":8080"),
 	}
 }
 

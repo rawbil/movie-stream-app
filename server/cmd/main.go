@@ -29,7 +29,7 @@ func main() {
 	
 	dbConfig := &server.DBConfig{
 		Dsn:  cfg.FormatDSN(),
-		Addr: ":8080",
+		Addr: utils.ServerConfigFunc().ServerAddr,
 	}
 
 	db, err := db.DBConfigFunc(dbConfig)
