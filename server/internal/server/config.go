@@ -2,11 +2,12 @@ package server
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rawbil/movie-stream-app/internal/utils"
 )
 
 type Api struct {
@@ -23,8 +24,13 @@ func (api *Api) Mount() http.Handler {
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
+		if err := api.DB.Ping(); err != nil {
+			utils.Log.Error("ERROR CONNECTING TO DB", "error", err)
+			return
+		}
+		utils.Log.Info("server and db ok")
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Server & DB OK",
+			"message": "Server and DB OK",
 		})
 	})
 
@@ -40,6 +46,6 @@ func (api *Api) Run(m http.Handler) error {
 		IdleTimeout:  time.Minute,
 	}
 
-	log.Printf("Server is listening on port: %s", api.DBConfig.Addr)
+	utils.Log.Info(fmt.Sprintf("SERVER IS LISTENING ON PORT: %s", api.DBConfig.Addr))
 	return srv.ListenAndServe()
 }
