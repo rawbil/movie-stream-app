@@ -12,6 +12,8 @@ import (
 
 type Service interface {
 	CreateGenre(ctx context.Context, genreName string) (string, error)
+	UpdateGenre(ctx context.Context, arg utils.UpdateGenreParams) (string, error)
+	ListGenres(ctx context.Context) ([]repository.Genre, error)
 }
 
 type Svc struct {
@@ -55,4 +57,47 @@ func (svc *Svc) CreateGenre(ctx context.Context, genreName string) (string, erro
 	}
 
 	return genre.GenreName, err
+}
+
+// ! Update Genre
+func (svc *Svc) UpdateGenre(ctx context.Context, arg utils.UpdateGenreParams) (string, error) {
+	//~ Validate fields
+	if err := utils.ValidateUpdateGenre(arg); err != nil {
+		if utils.ValidationErrors("required", err) {
+			return "", utils.AllFieldsRequiredError
+		}
+		return "", err
+	}
+
+	//~ Ensure genre exists
+	genre, err := svc.repository.GetGenre(ctx, arg.OldGenre)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", utils.NoRecordError
+		}
+		return "", err
+	}
+
+	//~ Ensure new genre does not exist
+	_, Geterr := svc.repository.GetGenre(ctx, arg.CurrentGenre)
+	if Geterr == nil {
+		return "", utils.DuplicateRecordError
+	} else if !errors.Is(Geterr, sql.ErrNoRows) {
+		return "", Geterr
+	}
+
+	//~ Update genre record
+	if _, err := svc.repository.UpdateGenre(ctx, repository.UpdateGenreParams{
+		GenreName: arg.CurrentGenre,
+		GenreID:   genre.GenreID,
+	}); err != nil {
+		return "", err
+	}
+
+	return arg.CurrentGenre, nil
+}
+
+// ! List All Genres
+func (svc *Svc) ListGenres(ctx context.Context) ([]repository.Genre, error) {
+	return svc.repository.ListGenres(ctx)
 }

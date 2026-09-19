@@ -32,6 +32,7 @@ func (api *Api) Mount() http.Handler {
 	// groups
 	api_v1 := r.Group("/api/v1")
 	movies := api_v1.Group("/movies")
+	movie_genres := movies.Group("/genres")
 
 	api_v1.GET("/health", func(c *gin.Context) {
 		if err := api.DB.Ping(); err != nil {
@@ -44,7 +45,9 @@ func (api *Api) Mount() http.Handler {
 		})
 	})
 
-	movies.POST("/add-genre", movieHandler.CreateGenre)
+	movie_genres.POST("/add", movieHandler.CreateGenre)
+	movie_genres.PATCH("/update", movieHandler.UpdateGenre)
+	movie_genres.GET("/list", movieHandler.ListGenres)
 
 	return r
 }

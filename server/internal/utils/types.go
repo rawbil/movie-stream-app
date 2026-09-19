@@ -17,5 +17,10 @@ type CreateUserParams struct {
 }
 
 type CreateGenreParams struct {
-	GenreName string `json:"genre_name" validate:"required"`
+	GenreName string `json:"current_genre" validate:"required"`
+}
+
+type UpdateGenreParams struct {
+	CurrentGenre string `json:"current_genre" validate:"required"`
+	OldGenre     string `json:"old_genre" validate:"required"`
 }

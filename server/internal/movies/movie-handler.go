@@ -45,7 +45,7 @@ func (h *Handler) CreateGenre(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusConflict, err.Error(), err)
 			return
 		}
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Internal Server Error", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
 
@@ -55,5 +55,56 @@ func (h *Handler) CreateGenre(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Genre '%s' added", genreName),
+	})
+}
+
+// ! UpdateGenre
+func (h *Handler) UpdateGenre(c *gin.Context) {
+	var params utils.UpdateGenreParams
+
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error reading json body", err)
+		return
+	}
+
+	new_genre, err := h.Service.UpdateGenre(c.Request.Context(), params)
+	if err != nil {
+		if err == utils.AllFieldsRequiredError {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
+			return
+		}
+
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusBadRequest, "genre not found in records", err)
+			return
+		}
+
+		if err == utils.DuplicateRecordError {
+			utils.ErrorResponse(c, http.StatusBadRequest, "genre already exists", err)
+			return
+		}
+
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Genre updated to '%s'", new_genre),
+	})
+}
+
+// ! List Genres
+func (h *Handler) ListGenres(c *gin.Context) {
+	genres, err := h.Service.ListGenres(c.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"data": gin.H{
+			"genres": genres,
+		},
 	})
 }
