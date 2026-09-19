@@ -7,11 +7,8 @@ CREATE TABLE IF NOT EXISTS movies(
     poster_path TEXT NOT NULL,
     youtube_id TEXT NOT NULL,
     admin_review TEXT NOT NULL,
-    genre_id BIGINT NOT NULL,
     ranking_value INT NOT NULL,
-    ranking_name VARCHAR(20) NOT NULL,
-
-    FOREIGN KEY (genre_id) REFERENCES genres(genre_id)
+    ranking_name VARCHAR(20) NOT NULL
 );
 
 -- +goose Down
