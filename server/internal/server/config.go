@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
+	"github.com/rawbil/movie-stream-app/internal/movies"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
 
@@ -23,7 +25,15 @@ type DBConfig struct {
 func (api *Api) Mount() http.Handler {
 	r := gin.Default()
 
-	r.GET("/health", func(c *gin.Context) {
+	repo := repository.New(api.DB)
+	movieService := movies.NewService(*repo)
+	movieHandler := movies.NewHandler(movieService)
+
+	// groups
+	api_v1 := r.Group("/api/v1")
+	movies := api_v1.Group("/movies")
+
+	api_v1.GET("/health", func(c *gin.Context) {
 		if err := api.DB.Ping(); err != nil {
 			utils.Log.Error("ERROR CONNECTING TO DB", "error", err)
 			return
@@ -33,6 +43,8 @@ func (api *Api) Mount() http.Handler {
 			"message": "Server and DB OK",
 		})
 	})
+
+	movies.POST("/add-genre", movieHandler.CreateGenre)
 
 	return r
 }
