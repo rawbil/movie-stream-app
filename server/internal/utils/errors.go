@@ -9,8 +9,8 @@ import (
 
 var (
 	AllFieldsRequiredError = errors.New("All fields are required")
-	NoRecordError = errors.New("No Record Found")
-	DuplicateRecordError = errors.New("Record already exists")
+	NoRecordError          = errors.New("No Record Found")
+	DuplicateRecordError   = errors.New("Record already exists")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {

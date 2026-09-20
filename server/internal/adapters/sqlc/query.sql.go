@@ -19,6 +19,21 @@ func (q *Queries) CreateGenre(ctx context.Context, genreName string) (sql.Result
 	return q.db.ExecContext(ctx, createGenre, genreName)
 }
 
+const createMovie = `-- name: CreateMovie :execresult
+INSERT INTO movies(imdb_id, title, poster_path)
+VALUES(?, ?, ?)
+`
+
+type CreateMovieParams struct {
+	ImdbID     string `json:"imdb_id"`
+	Title      string `json:"title"`
+	PosterPath string `json:"poster_path"`
+}
+
+func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createMovie, arg.ImdbID, arg.Title, arg.PosterPath)
+}
+
 const deleteGenre = `-- name: DeleteGenre :exec
 DELETE FROM genres
 WHERE genre_name = ?
@@ -53,6 +68,27 @@ func (q *Queries) GetGenreByID(ctx context.Context, genreID int64) (Genre, error
 	return i, err
 }
 
+const getMovie = `-- name: GetMovie :one
+SELECT movie_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
+WHERE movie_id = ?
+`
+
+func (q *Queries) GetMovie(ctx context.Context, movieID int64) (Movie, error) {
+	row := q.db.QueryRowContext(ctx, getMovie, movieID)
+	var i Movie
+	err := row.Scan(
+		&i.MovieID,
+		&i.ImdbID,
+		&i.Title,
+		&i.PosterPath,
+		&i.YoutubeID,
+		&i.AdminReview,
+		&i.RankingValue,
+		&i.RankingName,
+	)
+	return i, err
+}
+
 const listGenres = `-- name: ListGenres :many
 SELECT genre_id, genre_name FROM genres
 ORDER BY genre_name
@@ -68,6 +104,43 @@ func (q *Queries) ListGenres(ctx context.Context) ([]Genre, error) {
 	for rows.Next() {
 		var i Genre
 		if err := rows.Scan(&i.GenreID, &i.GenreName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMovies = `-- name: ListMovies :many
+SELECT movie_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies 
+ORDER BY ranking_value
+`
+
+func (q *Queries) ListMovies(ctx context.Context) ([]Movie, error) {
+	rows, err := q.db.QueryContext(ctx, listMovies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Movie
+	for rows.Next() {
+		var i Movie
+		if err := rows.Scan(
+			&i.MovieID,
+			&i.ImdbID,
+			&i.Title,
+			&i.PosterPath,
+			&i.YoutubeID,
+			&i.AdminReview,
+			&i.RankingValue,
+			&i.RankingName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

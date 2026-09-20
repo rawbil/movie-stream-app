@@ -5,6 +5,7 @@
 package repository
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -14,14 +15,14 @@ type Genre struct {
 }
 
 type Movie struct {
-	MovieID      int64  `json:"movie_id"`
-	ImdbID       string `json:"imdb_id"`
-	Title        string `json:"title"`
-	PosterPath   string `json:"poster_path"`
-	YoutubeID    string `json:"youtube_id"`
-	AdminReview  string `json:"admin_review"`
-	RankingValue int32  `json:"ranking_value"`
-	RankingName  string `json:"ranking_name"`
+	MovieID      int64          `json:"movie_id"`
+	ImdbID       string         `json:"imdb_id"`
+	Title        string         `json:"title"`
+	PosterPath   string         `json:"poster_path"`
+	YoutubeID    sql.NullString `json:"youtube_id"`
+	AdminReview  sql.NullString `json:"admin_review"`
+	RankingValue sql.NullInt32  `json:"ranking_value"`
+	RankingName  sql.NullString `json:"ranking_name"`
 }
 
 type MovieGenre struct {

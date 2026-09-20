@@ -22,3 +22,15 @@ WHERE genre_id = ?;
 -- name: DeleteGenre :exec
 DELETE FROM genres
 WHERE genre_name = ?;
+
+-- name: ListMovies :many
+SELECT * FROM movies 
+ORDER BY ranking_value;
+
+-- name: GetMovie :one
+SELECT * FROM movies
+WHERE movie_id = ?;
+
+-- name: CreateMovie :execresult
+INSERT INTO movies(imdb_id, title, poster_path)
+VALUES(?, ?, ?);
