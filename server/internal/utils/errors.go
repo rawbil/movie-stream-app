@@ -14,7 +14,7 @@ var (
 	MinTitleError = errors.New("title should have a minimum of 3 characters")
 	MaxTitleError = errors.New("title should have a maximum of 100 characters")
 	InvalidUrlError = errors.New("poster_path should be a valid url")
-	GenreMissing = errors.New("provide genre field")
+	GenreMissing = errors.New("provide at least one genre")
 	MovieExistsError = errors.New("movie already exists")
 )
 

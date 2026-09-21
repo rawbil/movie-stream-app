@@ -155,7 +155,7 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 		return err
 	}
 
-	if arg.Genre == "" {
+	if len(arg.Genres) < 1 {
 		return utils.GenreMissing
 	}
 
@@ -179,8 +179,6 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 		return err
 	}
 
-
-
 	//~ Create movie
 	movie_result, err := qtx.CreateMovie(ctx, repository.CreateMovieParams{
 		PublicID:   public_id[:], // gives the underlying 16-bytes value from the []byte
@@ -201,43 +199,34 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 		return err
 	}
 
-	//~ Get genre
-	genre, err := qtx.GetGenre(ctx, arg.Genre)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			//~ Create genre if not found
-			new_genre, err := qtx.CreateGenre(ctx, strings.ToLower(arg.Genre))
-			if err != nil {
+	for _, genreName := range arg.Genres {
+		//~ Get genre
+		genre, err := qtx.GetGenre(ctx, genreName)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				//~ Create genre if not found
+				new_genre, err := qtx.CreateGenre(ctx, strings.ToLower(genreName))
+				if err != nil {
+					return err
+				}
+
+				//~ get id
+				genre_id, err := new_genre.LastInsertId()
+				genre.GenreID = genre_id
+
+			} else {
 				return err
 			}
 
-			//~ get id
-			genre_id, err := new_genre.LastInsertId()
-			genre.GenreID = genre_id
-
-		} else {
-			return err
 		}
 
-	}
-
-	//~ Ensure movie genre record is unique
-	//! I don't really think this is necessary
-	if _, err := qtx.GetMovieGenre(ctx, repository.GetMovieGenreParams{
-		MovieID: movie_id,
-		GenreID: genre.GenreID,
-	}); err == nil {
-		return utils.DuplicateRecordError
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
-	//~ Create movie genre
-	if _, err := qtx.CreateMovieGenre(ctx, repository.CreateMovieGenreParams{
-		MovieID: movie_id,
-		GenreID: genre.GenreID,
-	}); err != nil {
-		return err
+		//~ Create movie genre
+		if _, err := qtx.CreateMovieGenre(ctx, repository.CreateMovieGenreParams{
+			MovieID: movie_id,
+			GenreID: genre.GenreID,
+		}); err != nil {
+			return err
+		}
 	}
 
 	//~ Commit context

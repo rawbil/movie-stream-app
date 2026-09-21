@@ -15,7 +15,7 @@ type CreateMovieParams struct {
 	Title      string `json:"title" validate:"required,min=3,max=100"`
 	PosterPath string `json:"poster_path" validate:"required,url"`
 	YoutubeID  string `json:"youtube_id"`
-	Genre      string `json:"genre"`
+	Genres      []string `json:"genres"`
 }
 
 type CreateUserParams struct {

@@ -169,13 +169,10 @@ func (h *Handler) CreateMovie(c *gin.Context) {
 		}
 
 		if err == utils.MovieExistsError {
-			utils.ErrorResponse(c, http.StatusNotFound, err.Error(), err)
+			utils.ErrorResponse(c, http.StatusConflict, err.Error(), err)
 			return
 		}
-		if err == utils.DuplicateRecordError {
-			utils.ErrorResponse(c, http.StatusConflict, "genre found in movie. try a different one this time", err)
-			return
-		}
+
 		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
