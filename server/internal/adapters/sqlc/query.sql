@@ -1,5 +1,5 @@
 -- name: CreateGenre :execresult
-INSERT INTO genres(genre_name)
+INSERT IGNORE INTO genres(genre_name)
 VALUES (?);
 
 -- name: UpdateGenre :execresult
@@ -54,7 +54,7 @@ ORDER BY m.ranking_value
 
 -- name: GetMovie :one
 SELECT 
-BIN_TO_UUID(m.public_id), 
+BIN_TO_UUID(m.public_id) AS public_id, 
 m.imdb_id, 
 m.title,
 m.poster_path, 
@@ -79,7 +79,6 @@ GROUP BY
   m.admin_review,
   m.ranking_value,
   m.ranking_name;
-;
 
 -- name: CreateMovie :execresult
 INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)

@@ -201,6 +201,7 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 
 	for _, genreName := range arg.Genres {
 		//~ Get genre
+		genreName = strings.ToLower(strings.TrimSpace(genreName))
 		genre, err := qtx.GetGenre(ctx, genreName)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -212,6 +213,9 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 
 				//~ get id
 				genre_id, err := new_genre.LastInsertId()
+				if err != nil {
+					return err
+				}
 				genre.GenreID = genre_id
 
 			} else {

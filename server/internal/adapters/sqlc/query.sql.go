@@ -11,7 +11,7 @@ import (
 )
 
 const createGenre = `-- name: CreateGenre :execresult
-INSERT INTO genres(genre_name)
+INSERT IGNORE INTO genres(genre_name)
 VALUES (?)
 `
 
@@ -20,8 +20,6 @@ func (q *Queries) CreateGenre(ctx context.Context, genreName string) (sql.Result
 }
 
 const createMovie = `-- name: CreateMovie :execresult
-;
-
 INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)
 VALUES(?, ?, ?, ?, ?)
 `
@@ -94,7 +92,7 @@ func (q *Queries) GetGenreByID(ctx context.Context, genreID int64) (Genre, error
 
 const getMovie = `-- name: GetMovie :one
 SELECT 
-BIN_TO_UUID(m.public_id), 
+BIN_TO_UUID(m.public_id) AS public_id, 
 m.imdb_id, 
 m.title,
 m.poster_path, 
@@ -122,7 +120,7 @@ GROUP BY
 `
 
 type GetMovieRow struct {
-	BinToUuid    string         `json:"bin_to_uuid"`
+	PublicID     string         `json:"public_id"`
 	ImdbID       string         `json:"imdb_id"`
 	Title        string         `json:"title"`
 	PosterPath   string         `json:"poster_path"`
@@ -137,7 +135,7 @@ func (q *Queries) GetMovie(ctx context.Context, publicID []byte) (GetMovieRow, e
 	row := q.db.QueryRowContext(ctx, getMovie, publicID)
 	var i GetMovieRow
 	err := row.Scan(
-		&i.BinToUuid,
+		&i.PublicID,
 		&i.ImdbID,
 		&i.Title,
 		&i.PosterPath,
