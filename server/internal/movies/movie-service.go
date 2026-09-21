@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -14,15 +16,20 @@ type Service interface {
 	CreateGenre(ctx context.Context, genreName string) (string, error)
 	UpdateGenre(ctx context.Context, arg utils.UpdateGenreParams) (string, error)
 	ListGenres(ctx context.Context) ([]repository.Genre, error)
+	ListMovies(ctx context.Context) ([]repository.ListMoviesRow, error)
+	GetMovie(ctx context.Context, publicID uuid.UUID) (repository.GetMovieRow, error)
+	CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error
 }
 
 type Svc struct {
 	repository repository.Queries
+	db         *sql.DB
 }
 
-func NewService(repo repository.Queries) Service {
+func NewService(repo repository.Queries, db *sql.DB) Service {
 	return &Svc{
 		repository: repo,
+		db:         db,
 	}
 }
 
@@ -100,4 +107,144 @@ func (svc *Svc) UpdateGenre(ctx context.Context, arg utils.UpdateGenreParams) (s
 // ! List All Genres
 func (svc *Svc) ListGenres(ctx context.Context) ([]repository.Genre, error) {
 	return svc.repository.ListGenres(ctx)
+}
+
+// ! List All Movies
+func (svc *Svc) ListMovies(ctx context.Context) ([]repository.ListMoviesRow, error) {
+	return svc.repository.ListMovies(ctx)
+}
+
+// ! Get Movie
+func (svc *Svc) GetMovie(ctx context.Context, publicID uuid.UUID) (repository.GetMovieRow, error) {
+
+	movie, err := svc.repository.GetMovie(ctx, publicID[:])
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repository.GetMovieRow{}, utils.NoRecordError
+		}
+		return repository.GetMovieRow{}, err
+	}
+
+	return movie, nil
+}
+
+// ! Create Movie
+func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error {
+	//~ Validate fields
+	if err := utils.ValidateCreateMovie(repository.CreateMovieParams{
+		ImdbID:     arg.ImdbID,
+		Title:      arg.Title,
+		PosterPath: arg.PosterPath,
+	}); err != nil {
+		if utils.ValidationErrors("required", err) {
+			return utils.AllFieldsRequiredError
+		}
+
+		if utils.ValidationErrors("min", err) {
+			return utils.MinTitleError
+		}
+
+		if utils.ValidationErrors("max", err) {
+			return utils.MaxTitleError
+		}
+
+		if utils.ValidationErrors("url", err) {
+			return utils.InvalidUrlError
+		}
+
+		return err
+	}
+
+	if arg.Genre == "" {
+		return utils.GenreMissing
+	}
+
+	public_id := uuid.New()
+	fmt.Println(public_id)
+
+	//? Start transaction for creating movie and genre
+	tx, err := svc.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	qtx := svc.repository.WithTx(tx)
+
+	//~ Ensure movie does not exist
+	if _, err := qtx.GetUniqueMovie(ctx, arg.ImdbID); err == nil {
+		return utils.MovieExistsError
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+
+
+	//~ Create movie
+	movie_result, err := qtx.CreateMovie(ctx, repository.CreateMovieParams{
+		PublicID:   public_id[:], // gives the underlying 16-bytes value from the []byte
+		ImdbID:     arg.ImdbID,
+		Title:      arg.Title,
+		PosterPath: arg.PosterPath,
+		YoutubeID: sql.NullString{
+			String: arg.YoutubeID,
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	movie_id, err := movie_result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	//~ Get genre
+	genre, err := qtx.GetGenre(ctx, arg.Genre)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			//~ Create genre if not found
+			new_genre, err := qtx.CreateGenre(ctx, strings.ToLower(arg.Genre))
+			if err != nil {
+				return err
+			}
+
+			//~ get id
+			genre_id, err := new_genre.LastInsertId()
+			genre.GenreID = genre_id
+
+		} else {
+			return err
+		}
+
+	}
+
+	//~ Ensure movie genre record is unique
+	//! I don't really think this is necessary
+	if _, err := qtx.GetMovieGenre(ctx, repository.GetMovieGenreParams{
+		MovieID: movie_id,
+		GenreID: genre.GenreID,
+	}); err == nil {
+		return utils.DuplicateRecordError
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	//~ Create movie genre
+	if _, err := qtx.CreateMovieGenre(ctx, repository.CreateMovieGenreParams{
+		MovieID: movie_id,
+		GenreID: genre.GenreID,
+	}); err != nil {
+		return err
+	}
+
+	//~ Commit context
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+
 }

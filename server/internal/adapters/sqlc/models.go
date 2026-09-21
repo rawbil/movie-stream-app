@@ -16,6 +16,7 @@ type Genre struct {
 
 type Movie struct {
 	MovieID      int64          `json:"movie_id"`
+	PublicID     []byte         `json:"public_id"`
 	ImdbID       string         `json:"imdb_id"`
 	Title        string         `json:"title"`
 	PosterPath   string         `json:"poster_path"`
@@ -32,7 +33,7 @@ type MovieGenre struct {
 
 type User struct {
 	UserID    int64     `json:"user_id"`
-	PublicID  string    `json:"public_id"`
+	PublicID  []byte    `json:"public_id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`

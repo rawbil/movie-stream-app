@@ -26,7 +26,7 @@ func (api *Api) Mount() http.Handler {
 	r := gin.Default()
 
 	repo := repository.New(api.DB)
-	movieService := movies.NewService(*repo)
+	movieService := movies.NewService(*repo, api.DB)
 	movieHandler := movies.NewHandler(movieService)
 
 	// groups
@@ -48,6 +48,9 @@ func (api *Api) Mount() http.Handler {
 	movie_genres.POST("/add", movieHandler.CreateGenre)
 	movie_genres.PATCH("/update", movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
+	movies.GET("/all", movieHandler.ListMovies)
+	movies.POST("/create", movieHandler.CreateMovie)
+	movies.GET("/one", movieHandler.GetMovie)
 
 	return r
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -106,5 +108,79 @@ func (h *Handler) ListGenres(c *gin.Context) {
 		"data": gin.H{
 			"genres": genres,
 		},
+	})
+}
+
+// ! List Movies
+func (h *Handler) ListMovies(c *gin.Context) {
+	movies, err := h.Service.ListMovies(c.Request.Context())
+
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"data": gin.H{
+			"movies": movies,
+		},
+	})
+}
+
+// ! Get Movie
+func (h *Handler) GetMovie(c *gin.Context) {
+	public_id_from_url := c.Query("public_id")
+	publicID, err := uuid.Parse(public_id_from_url)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid public_id", err)
+		return
+	}
+
+	movie, err := h.Service.GetMovie(c.Request.Context(), publicID)
+	if err != nil {
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "movie not found", err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"movie":   movie,
+	})
+}
+
+// ! Create Movie
+func (h *Handler) CreateMovie(c *gin.Context) {
+	var params utils.CreateMovieParams
+
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
+		return
+	}
+
+	if err := h.Service.CreateMovie(c.Request.Context(), params); err != nil {
+		if err == utils.AllFieldsRequiredError || err == utils.MinTitleError || err == utils.MaxTitleError || err == utils.InvalidUrlError || err == utils.GenreMissing {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
+			return
+		}
+
+		if err == utils.MovieExistsError {
+			utils.ErrorResponse(c, http.StatusNotFound, err.Error(), err)
+			return
+		}
+		if err == utils.DuplicateRecordError {
+			utils.ErrorResponse(c, http.StatusConflict, "genre found in movie. try a different one this time", err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Movie '%s' created", params.Title),
 	})
 }

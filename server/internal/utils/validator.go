@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/go-playground/validator/v10"
+	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 )
 
 var validate = NewValidator()
@@ -30,6 +31,15 @@ func PasswordValidator(fl validator.FieldLevel) bool {
 
 func ValidateUpdateGenre(arg UpdateGenreParams) error {
 	return validate.Struct(arg)
+}
+
+func ValidateCreateMovie(arg repository.CreateMovieParams) error {
+	return validate.Struct(CreateMovieParams{
+		ImdbID:     arg.ImdbID,
+		Title:      arg.Title,
+		PosterPath: arg.PosterPath,
+		YoutubeID:  arg.YoutubeID.String,
+	})
 }
 
 func ValidationErrors(tag string, err error) bool {

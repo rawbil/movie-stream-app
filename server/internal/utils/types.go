@@ -1,13 +1,21 @@
 package utils
 
+// type CreateMovieParams struct {
+// 	ImdbID       string `json:"imdb_id" validate:"required"`
+// 	Title        string `json:"title" validate:"required,min=3,max=500"`
+// 	PosterPath   string `json:"poster_path" validate:"required,url"`
+// 	YoutubeID    string `json:"youtube_id"`
+// 	AdminReview  string `json:"admin_review"`
+// 	RankingValue int    `json:"ranking_value"`
+// 	RankingName  string `json:"ranking_name"`
+// }
+
 type CreateMovieParams struct {
-	ImdbID       string `json:"imdb_id" validate:"required"`
-	Title        string `json:"title" validate:"required,min=3,max=500"`
-	PosterPath   string `json:"poster_path" validate:"required,url"`
-	YoutubeID    string `json:"youtube_id"`
-	AdminReview  string `json:"admin_review"`
-	RankingValue int    `json:"ranking_value"`
-	RankingName  string `json:"ranking_name"`
+	ImdbID     string `json:"imdb_id" validate:"required"`
+	Title      string `json:"title" validate:"required,min=3,max=100"`
+	PosterPath string `json:"poster_path" validate:"required,url"`
+	YoutubeID  string `json:"youtube_id"`
+	Genre      string `json:"genre"`
 }
 
 type CreateUserParams struct {

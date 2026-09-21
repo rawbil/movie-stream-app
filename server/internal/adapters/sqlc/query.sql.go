@@ -20,18 +20,40 @@ func (q *Queries) CreateGenre(ctx context.Context, genreName string) (sql.Result
 }
 
 const createMovie = `-- name: CreateMovie :execresult
-INSERT INTO movies(imdb_id, title, poster_path)
-VALUES(?, ?, ?)
+INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)
+VALUES(?, ?, ?, ?, ?)
 `
 
 type CreateMovieParams struct {
-	ImdbID     string `json:"imdb_id"`
-	Title      string `json:"title"`
-	PosterPath string `json:"poster_path"`
+	PublicID   []byte         `json:"public_id"`
+	ImdbID     string         `json:"imdb_id"`
+	Title      string         `json:"title"`
+	PosterPath string         `json:"poster_path"`
+	YoutubeID  sql.NullString `json:"youtube_id"`
 }
 
 func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createMovie, arg.ImdbID, arg.Title, arg.PosterPath)
+	return q.db.ExecContext(ctx, createMovie,
+		arg.PublicID,
+		arg.ImdbID,
+		arg.Title,
+		arg.PosterPath,
+		arg.YoutubeID,
+	)
+}
+
+const createMovieGenre = `-- name: CreateMovieGenre :execresult
+INSERT INTO movie_genres(movie_id, genre_id)
+VALUES (?, ?)
+`
+
+type CreateMovieGenreParams struct {
+	MovieID int64 `json:"movie_id"`
+	GenreID int64 `json:"genre_id"`
+}
+
+func (q *Queries) CreateMovieGenre(ctx context.Context, arg CreateMovieGenreParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createMovieGenre, arg.MovieID, arg.GenreID)
 }
 
 const deleteGenre = `-- name: DeleteGenre :exec
@@ -69,15 +91,75 @@ func (q *Queries) GetGenreByID(ctx context.Context, genreID int64) (Genre, error
 }
 
 const getMovie = `-- name: GetMovie :one
-SELECT movie_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
-WHERE movie_id = ?
+SELECT 
+    movie_id, 
+    BIN_TO_UUID(public_id) AS public_id, 
+    imdb_id, title, 
+    poster_path, youtube_id, 
+    admin_review, 
+    ranking_name, 
+    ranking_value 
+FROM movies
+WHERE public_id = ?
 `
 
-func (q *Queries) GetMovie(ctx context.Context, movieID int64) (Movie, error) {
-	row := q.db.QueryRowContext(ctx, getMovie, movieID)
+type GetMovieRow struct {
+	MovieID      int64          `json:"movie_id"`
+	PublicID     string         `json:"public_id"`
+	ImdbID       string         `json:"imdb_id"`
+	Title        string         `json:"title"`
+	PosterPath   string         `json:"poster_path"`
+	YoutubeID    sql.NullString `json:"youtube_id"`
+	AdminReview  sql.NullString `json:"admin_review"`
+	RankingName  sql.NullString `json:"ranking_name"`
+	RankingValue sql.NullInt32  `json:"ranking_value"`
+}
+
+func (q *Queries) GetMovie(ctx context.Context, publicID []byte) (GetMovieRow, error) {
+	row := q.db.QueryRowContext(ctx, getMovie, publicID)
+	var i GetMovieRow
+	err := row.Scan(
+		&i.MovieID,
+		&i.PublicID,
+		&i.ImdbID,
+		&i.Title,
+		&i.PosterPath,
+		&i.YoutubeID,
+		&i.AdminReview,
+		&i.RankingName,
+		&i.RankingValue,
+	)
+	return i, err
+}
+
+const getMovieGenre = `-- name: GetMovieGenre :one
+SELECT movie_id, genre_id FROM movie_genres
+WHERE movie_id = ? AND genre_id = ?
+`
+
+type GetMovieGenreParams struct {
+	MovieID int64 `json:"movie_id"`
+	GenreID int64 `json:"genre_id"`
+}
+
+func (q *Queries) GetMovieGenre(ctx context.Context, arg GetMovieGenreParams) (MovieGenre, error) {
+	row := q.db.QueryRowContext(ctx, getMovieGenre, arg.MovieID, arg.GenreID)
+	var i MovieGenre
+	err := row.Scan(&i.MovieID, &i.GenreID)
+	return i, err
+}
+
+const getUniqueMovie = `-- name: GetUniqueMovie :one
+SELECT movie_id, public_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
+WHERE imdb_id = ?
+`
+
+func (q *Queries) GetUniqueMovie(ctx context.Context, imdbID string) (Movie, error) {
+	row := q.db.QueryRowContext(ctx, getUniqueMovie, imdbID)
 	var i Movie
 	err := row.Scan(
 		&i.MovieID,
+		&i.PublicID,
 		&i.ImdbID,
 		&i.Title,
 		&i.PosterPath,
@@ -118,21 +200,44 @@ func (q *Queries) ListGenres(ctx context.Context) ([]Genre, error) {
 }
 
 const listMovies = `-- name: ListMovies :many
-SELECT movie_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies 
+SELECT 
+    movie_id,
+    BIN_TO_UUID(public_id) AS public_id,
+    imdb_id,
+    title,
+    poster_path,
+    youtube_id,
+    admin_review,
+    ranking_value,
+    ranking_name
+ FROM movies 
 ORDER BY ranking_value
 `
 
-func (q *Queries) ListMovies(ctx context.Context) ([]Movie, error) {
+type ListMoviesRow struct {
+	MovieID      int64          `json:"movie_id"`
+	PublicID     string         `json:"public_id"`
+	ImdbID       string         `json:"imdb_id"`
+	Title        string         `json:"title"`
+	PosterPath   string         `json:"poster_path"`
+	YoutubeID    sql.NullString `json:"youtube_id"`
+	AdminReview  sql.NullString `json:"admin_review"`
+	RankingValue sql.NullInt32  `json:"ranking_value"`
+	RankingName  sql.NullString `json:"ranking_name"`
+}
+
+func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMovies)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Movie
+	var items []ListMoviesRow
 	for rows.Next() {
-		var i Movie
+		var i ListMoviesRow
 		if err := rows.Scan(
 			&i.MovieID,
+			&i.PublicID,
 			&i.ImdbID,
 			&i.Title,
 			&i.PosterPath,

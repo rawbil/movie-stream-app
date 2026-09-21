@@ -11,6 +11,11 @@ var (
 	AllFieldsRequiredError = errors.New("All fields are required")
 	NoRecordError          = errors.New("No Record Found")
 	DuplicateRecordError   = errors.New("Record already exists")
+	MinTitleError = errors.New("title should have a minimum of 3 characters")
+	MaxTitleError = errors.New("title should have a maximum of 100 characters")
+	InvalidUrlError = errors.New("poster_path should be a valid url")
+	GenreMissing = errors.New("provide genre field")
+	MovieExistsError = errors.New("movie already exists")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {
