@@ -92,42 +92,48 @@ func (q *Queries) GetGenreByID(ctx context.Context, genreID int64) (Genre, error
 
 const getMovie = `-- name: GetMovie :one
 SELECT 
-    movie_id, 
-    BIN_TO_UUID(public_id) AS public_id, 
-    imdb_id, title, 
-    poster_path, youtube_id, 
-    admin_review, 
-    ranking_name, 
-    ranking_value 
-FROM movies
-WHERE public_id = ?
+BIN_TO_UUID(m.public_id), 
+m.imdb_id, 
+m.title,
+m.poster_path, 
+m.youtube_id, 
+m.admin_review,
+m.ranking_value, 
+m.ranking_name,  
+g.genre_name 
+from movies m
+ JOIN movie_genres mg
+ON m.movie_id = mg.movie_id
+JOIN genres g
+ON mg.genre_id = g.genre_id
+WHERE m.public_id = ?
 `
 
 type GetMovieRow struct {
-	MovieID      int64          `json:"movie_id"`
-	PublicID     string         `json:"public_id"`
+	BinToUuid    string         `json:"bin_to_uuid"`
 	ImdbID       string         `json:"imdb_id"`
 	Title        string         `json:"title"`
 	PosterPath   string         `json:"poster_path"`
 	YoutubeID    sql.NullString `json:"youtube_id"`
 	AdminReview  sql.NullString `json:"admin_review"`
-	RankingName  sql.NullString `json:"ranking_name"`
 	RankingValue sql.NullInt32  `json:"ranking_value"`
+	RankingName  sql.NullString `json:"ranking_name"`
+	GenreName    string         `json:"genre_name"`
 }
 
 func (q *Queries) GetMovie(ctx context.Context, publicID []byte) (GetMovieRow, error) {
 	row := q.db.QueryRowContext(ctx, getMovie, publicID)
 	var i GetMovieRow
 	err := row.Scan(
-		&i.MovieID,
-		&i.PublicID,
+		&i.BinToUuid,
 		&i.ImdbID,
 		&i.Title,
 		&i.PosterPath,
 		&i.YoutubeID,
 		&i.AdminReview,
-		&i.RankingName,
 		&i.RankingValue,
+		&i.RankingName,
+		&i.GenreName,
 	)
 	return i, err
 }
@@ -201,21 +207,24 @@ func (q *Queries) ListGenres(ctx context.Context) ([]Genre, error) {
 
 const listMovies = `-- name: ListMovies :many
 SELECT 
-    movie_id,
-    BIN_TO_UUID(public_id) AS public_id,
-    imdb_id,
-    title,
-    poster_path,
-    youtube_id,
-    admin_review,
-    ranking_value,
-    ranking_name
- FROM movies 
-ORDER BY ranking_value
+BIN_TO_UUID(m.public_id) AS public_id,
+m.imdb_id, 
+m.title,
+m.poster_path, 
+m.youtube_id, 
+m.admin_review,
+m.ranking_value, 
+m.ranking_name,  
+g.genre_name 
+from movies m
+ JOIN movie_genres mg
+ON m.movie_id = mg.movie_id
+JOIN genres g
+ON mg.genre_id = g.genre_id
+ORDER BY m.ranking_value
 `
 
 type ListMoviesRow struct {
-	MovieID      int64          `json:"movie_id"`
 	PublicID     string         `json:"public_id"`
 	ImdbID       string         `json:"imdb_id"`
 	Title        string         `json:"title"`
@@ -224,6 +233,7 @@ type ListMoviesRow struct {
 	AdminReview  sql.NullString `json:"admin_review"`
 	RankingValue sql.NullInt32  `json:"ranking_value"`
 	RankingName  sql.NullString `json:"ranking_name"`
+	GenreName    string         `json:"genre_name"`
 }
 
 func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
@@ -236,7 +246,6 @@ func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
 	for rows.Next() {
 		var i ListMoviesRow
 		if err := rows.Scan(
-			&i.MovieID,
 			&i.PublicID,
 			&i.ImdbID,
 			&i.Title,
@@ -245,6 +254,7 @@ func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
 			&i.AdminReview,
 			&i.RankingValue,
 			&i.RankingName,
+			&i.GenreName,
 		); err != nil {
 			return nil, err
 		}

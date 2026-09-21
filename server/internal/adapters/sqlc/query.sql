@@ -25,29 +25,41 @@ WHERE genre_name = ?;
 
 -- name: ListMovies :many
 SELECT 
-    movie_id,
-    BIN_TO_UUID(public_id) AS public_id,
-    imdb_id,
-    title,
-    poster_path,
-    youtube_id,
-    admin_review,
-    ranking_value,
-    ranking_name
- FROM movies 
-ORDER BY ranking_value;
+BIN_TO_UUID(m.public_id) AS public_id,
+m.imdb_id, 
+m.title,
+m.poster_path, 
+m.youtube_id, 
+m.admin_review,
+m.ranking_value, 
+m.ranking_name,  
+g.genre_name 
+from movies m
+ JOIN movie_genres mg
+ON m.movie_id = mg.movie_id
+JOIN genres g
+ON mg.genre_id = g.genre_id
+ORDER BY m.ranking_value
+;
 
 -- name: GetMovie :one
 SELECT 
-    movie_id, 
-    BIN_TO_UUID(public_id) AS public_id, 
-    imdb_id, title, 
-    poster_path, youtube_id, 
-    admin_review, 
-    ranking_name, 
-    ranking_value 
-FROM movies
-WHERE public_id = ?;
+BIN_TO_UUID(m.public_id), 
+m.imdb_id, 
+m.title,
+m.poster_path, 
+m.youtube_id, 
+m.admin_review,
+m.ranking_value, 
+m.ranking_name,  
+g.genre_name 
+from movies m
+ JOIN movie_genres mg
+ON m.movie_id = mg.movie_id
+JOIN genres g
+ON mg.genre_id = g.genre_id
+WHERE m.public_id = ?
+;
 
 -- name: CreateMovie :execresult
 INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)
