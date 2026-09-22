@@ -1,0 +1,8 @@
+-- +goose Up
+CREATE TABLE IF NOT EXISTS roles(
+    role_id BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    role VARCHAR(20) NOT NULL UNIQUE
+);
+
+-- +goose Down
+DROP TABLE IF EXISTS roles;

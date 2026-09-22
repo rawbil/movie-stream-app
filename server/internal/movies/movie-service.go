@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -160,7 +159,7 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 	}
 
 	public_id := uuid.New()
-	fmt.Println(public_id)
+	// fmt.Println(public_id)
 
 	//? Start transaction for creating movie and genre
 	tx, err := svc.db.Begin()
