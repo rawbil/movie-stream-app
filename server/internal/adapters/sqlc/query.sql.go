@@ -80,7 +80,7 @@ func (q *Queries) CreateRole(ctx context.Context, role string) (sql.Result, erro
 }
 
 const createRolePermission = `-- name: CreateRolePermission :execresult
-INSERT INTO role_permissions(role_id, permission_id)
+INSERT IGNORE INTO role_permissions(role_id, permission_id)
 VALUES (?, ?)
 `
 
@@ -108,6 +108,20 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (sql.Res
 	return q.db.ExecContext(ctx, createUser, arg.Username, arg.Email, arg.Password)
 }
 
+const createUserGenre = `-- name: CreateUserGenre :execresult
+INSERT IGNORE INTO user_fav_genres(user_id, genre_id)
+VALUES (?, ?)
+`
+
+type CreateUserGenreParams struct {
+	UserID  int64 `json:"user_id"`
+	GenreID int64 `json:"genre_id"`
+}
+
+func (q *Queries) CreateUserGenre(ctx context.Context, arg CreateUserGenreParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createUserGenre, arg.UserID, arg.GenreID)
+}
+
 const createUserPermission = `-- name: CreateUserPermission :execresult
 INSERT INTO user_permissions(permission)
 VALUES (?)
@@ -115,6 +129,20 @@ VALUES (?)
 
 func (q *Queries) CreateUserPermission(ctx context.Context, permission string) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createUserPermission, permission)
+}
+
+const createUserRoles = `-- name: CreateUserRoles :execresult
+INSERT IGNORE INTO user_roles(user_id, role_id)
+VALUES (?, ?)
+`
+
+type CreateUserRolesParams struct {
+	UserID int64 `json:"user_id"`
+	RoleID int64 `json:"role_id"`
+}
+
+func (q *Queries) CreateUserRoles(ctx context.Context, arg CreateUserRolesParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createUserRoles, arg.UserID, arg.RoleID)
 }
 
 const deleteGenre = `-- name: DeleteGenre :exec
@@ -226,6 +254,18 @@ func (q *Queries) GetMovieGenre(ctx context.Context, arg GetMovieGenreParams) (M
 	return i, err
 }
 
+const getRole = `-- name: GetRole :one
+SELECT role_id, role FROM roles
+WHERE role = ?
+`
+
+func (q *Queries) GetRole(ctx context.Context, role string) (Role, error) {
+	row := q.db.QueryRowContext(ctx, getRole, role)
+	var i Role
+	err := row.Scan(&i.RoleID, &i.Role)
+	return i, err
+}
+
 const getUniqueMovie = `-- name: GetUniqueMovie :one
 SELECT movie_id, public_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
 WHERE imdb_id = ?
@@ -244,6 +284,26 @@ func (q *Queries) GetUniqueMovie(ctx context.Context, imdbID string) (Movie, err
 		&i.AdminReview,
 		&i.RankingValue,
 		&i.RankingName,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT user_id, public_id, username, email, password, created_at, updated_at FROM users
+WHERE email = ?
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.PublicID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

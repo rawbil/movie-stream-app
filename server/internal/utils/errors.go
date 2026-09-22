@@ -16,6 +16,8 @@ var (
 	InvalidUrlError = errors.New("poster_path should be a valid url")
 	GenreMissing = errors.New("provide at least one genre")
 	MovieExistsError = errors.New("movie already exists")
+	InvalidEmailFormat = errors.New("invalid email format")
+	InvalidPasswordFormat = errors.New("password should be at between 6-20 characters long, have at least alphanumerical and have at least one special character")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {

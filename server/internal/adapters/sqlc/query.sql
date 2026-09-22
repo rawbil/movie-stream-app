@@ -113,9 +113,21 @@ INSERT INTO user_permissions(permission)
 VALUES (?);
 
 -- name: CreateRolePermission :execresult
-INSERT INTO role_permissions(role_id, permission_id)
+INSERT IGNORE INTO role_permissions(role_id, permission_id)
 VALUES (?, ?);
 
--- naame: CreateUserRoles :execresult
-INSERT INTO user_roles(user_id, role_id)
+-- name: CreateUserRoles :execresult
+INSERT IGNORE INTO user_roles(user_id, role_id)
 VALUES (?, ?);
+
+-- name: CreateUserGenre :execresult
+INSERT IGNORE INTO user_fav_genres(user_id, genre_id)
+VALUES (?, ?);
+
+-- name: GetRole :one
+SELECT * FROM roles
+WHERE role = ?;
+
+-- name: GetUserByEmail :one
+SELECT * FROM users
+WHERE email = ?;

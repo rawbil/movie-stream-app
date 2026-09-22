@@ -22,6 +22,7 @@ type CreateUserParams struct {
 	Username string `json:"username" validate:"required,min=3,max=50"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,password_format"`
+	FavGenres []string `json:"fav_genres"`
 }
 
 type CreateGenreParams struct {

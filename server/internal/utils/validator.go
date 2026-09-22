@@ -42,6 +42,14 @@ func ValidateCreateMovie(arg repository.CreateMovieParams) error {
 	})
 }
 
+func ValidateCreateUser(arg repository.CreateUserParams) error {
+	return validate.Struct(CreateUserParams{
+		Username: arg.Username,
+		Password: arg.Password,
+		Email:    arg.Email,
+	})
+}
+
 func ValidationErrors(tag string, err error) bool {
 	var validationErrors validator.ValidationErrors
 
