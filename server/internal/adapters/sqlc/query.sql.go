@@ -56,6 +56,67 @@ func (q *Queries) CreateMovieGenre(ctx context.Context, arg CreateMovieGenrePara
 	return q.db.ExecContext(ctx, createMovieGenre, arg.MovieID, arg.GenreID)
 }
 
+const createRefreshToken = `-- name: CreateRefreshToken :execresult
+INSERT INTO refresh_tokens(user_id, hashed_token)
+VALUES (?, ?)
+`
+
+type CreateRefreshTokenParams struct {
+	UserID      int64  `json:"user_id"`
+	HashedToken string `json:"hashed_token"`
+}
+
+func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createRefreshToken, arg.UserID, arg.HashedToken)
+}
+
+const createRole = `-- name: CreateRole :execresult
+INSERT INTO roles(role)
+VALUES (?)
+`
+
+func (q *Queries) CreateRole(ctx context.Context, role string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createRole, role)
+}
+
+const createRolePermission = `-- name: CreateRolePermission :execresult
+INSERT INTO role_permissions(role_id, permission_id)
+VALUES (?, ?)
+`
+
+type CreateRolePermissionParams struct {
+	RoleID       int64 `json:"role_id"`
+	PermissionID int64 `json:"permission_id"`
+}
+
+func (q *Queries) CreateRolePermission(ctx context.Context, arg CreateRolePermissionParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createRolePermission, arg.RoleID, arg.PermissionID)
+}
+
+const createUser = `-- name: CreateUser :execresult
+INSERT INTO users(username, email, password)
+VALUES (?, ?, ?)
+`
+
+type CreateUserParams struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createUser, arg.Username, arg.Email, arg.Password)
+}
+
+const createUserPermission = `-- name: CreateUserPermission :execresult
+INSERT INTO user_permissions(permission)
+VALUES (?)
+`
+
+func (q *Queries) CreateUserPermission(ctx context.Context, permission string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createUserPermission, permission)
+}
+
 const deleteGenre = `-- name: DeleteGenre :exec
 DELETE FROM genres
 WHERE genre_name = ?

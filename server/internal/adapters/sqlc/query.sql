@@ -95,3 +95,27 @@ WHERE movie_id = ? AND genre_id = ?;
 -- name: GetUniqueMovie :one
 SELECT * FROM movies
 WHERE imdb_id = ?;
+
+-- name: CreateUser :execresult
+INSERT INTO users(username, email, password)
+VALUES (?, ?, ?);
+
+-- name: CreateRefreshToken :execresult
+INSERT INTO refresh_tokens(user_id, hashed_token)
+VALUES (?, ?);
+
+-- name: CreateRole :execresult
+INSERT INTO roles(role)
+VALUES (?);
+
+-- name: CreateUserPermission :execresult
+INSERT INTO user_permissions(permission)
+VALUES (?);
+
+-- name: CreateRolePermission :execresult
+INSERT INTO role_permissions(role_id, permission_id)
+VALUES (?, ?);
+
+-- naame: CreateUserRoles :execresult
+INSERT INTO user_roles(user_id, role_id)
+VALUES (?, ?);

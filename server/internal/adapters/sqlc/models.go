@@ -31,6 +31,23 @@ type MovieGenre struct {
 	GenreID int64 `json:"genre_id"`
 }
 
+type RefreshToken struct {
+	ID          int64  `json:"id"`
+	UserID      int64  `json:"user_id"`
+	HashedToken string `json:"hashed_token"`
+	Revoked     bool   `json:"revoked"`
+}
+
+type Role struct {
+	RoleID int64  `json:"role_id"`
+	Role   string `json:"role"`
+}
+
+type RolePermission struct {
+	RoleID       int64 `json:"role_id"`
+	PermissionID int64 `json:"permission_id"`
+}
+
 type User struct {
 	UserID    int64     `json:"user_id"`
 	PublicID  []byte    `json:"public_id"`
@@ -44,4 +61,14 @@ type User struct {
 type UserFavGenre struct {
 	UserID  int64 `json:"user_id"`
 	GenreID int64 `json:"genre_id"`
+}
+
+type UserPermission struct {
+	ID         int64  `json:"id"`
+	Permission string `json:"permission"`
+}
+
+type UserRole struct {
+	UserID int64 `json:"user_id"`
+	RoleID int64 `json:"role_id"`
 }
