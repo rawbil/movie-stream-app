@@ -2,6 +2,6 @@ package authorization
 
 
 var (
-	AdminRole = "Admin"
-	UserRole = "User"
+	AdminRole = "ADMIN"
+	UserRole = "USER"
 )

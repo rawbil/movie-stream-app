@@ -18,6 +18,7 @@ var (
 	MovieExistsError = errors.New("movie already exists")
 	InvalidEmailFormat = errors.New("invalid email format")
 	InvalidPasswordFormat = errors.New("password should be at between 6-20 characters long, have at least alphanumerical and have at least one special character")
+	NoEmptyGenre = errors.New("All genre fields should be populated")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {

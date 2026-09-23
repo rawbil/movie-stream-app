@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
@@ -12,6 +13,7 @@ import (
 )
 
 type Service interface {
+	RegisterUser(ctx context.Context, arg utils.CreateUserParams) error
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
 }
 
@@ -28,7 +30,7 @@ func NewService(repository repository.Queries, db *sql.DB) Service {
 }
 
 // ! Register
-func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) (error) {
+func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) error {
 	//~ Validate fields
 	if err := utils.ValidateCreateUser(repository.CreateUserParams{
 		Username: arg.Username,
@@ -55,6 +57,17 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) (e
 			return utils.MaxTitleError
 		}
 		return err
+	}
+
+	//~ Ensure fav_genres has at least one item
+	if len(arg.FavGenres) < 1 {
+		return utils.GenreMissing
+	}
+
+	for _, g := range arg.FavGenres {
+		if strings.TrimSpace(g) == "" {
+			return utils.NoEmptyGenre
+		}
 	}
 
 	//~ Ensure user does not already exist
@@ -98,13 +111,22 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) (e
 	//~ Get Default Role
 	role, err := qtx.GetRole(ctx, authorization.UserRole)
 	if err != nil {
-		// create role if not available
-		if errors.Is(err, sql.ErrNoRows) {
-			if _, err := qtx.CreateRole(ctx, authorization.UserRole); err != nil {
-				return err
-			}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
 		}
-		return err
+
+		// create role if not available
+		createdRole, err := qtx.CreateRole(ctx, authorization.UserRole)
+		if err != nil {
+			return err
+		}
+
+		roleID, err := createdRole.LastInsertId()
+		if err != nil {
+			return err
+		}
+
+		role.RoleID = roleID
 	}
 
 	//~ Update User Role
@@ -118,24 +140,25 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) (e
 	//~ Create user favourite genres
 	for _, genre := range arg.FavGenres {
 		// Get genre details
+		genre = strings.ToLower(strings.TrimSpace(genre))
 		genre_record, err := qtx.GetGenre(ctx, genre)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				// create genre if it is missing
-				created_genre, err := qtx.CreateGenre(ctx, genre)
-				if err != nil {
-					return err
-				}
-
-				created_genre_id, err := created_genre.LastInsertId()
-				if err != nil {
-					return err
-				}
-
-				genre_record.GenreID = created_genre_id
-
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
 			}
-			return err
+
+			// create genre if it is missing
+			created_genre, err := qtx.CreateGenre(ctx, genre)
+			if err != nil {
+				return err
+			}
+
+			created_genre_id, err := created_genre.LastInsertId()
+			if err != nil {
+				return err
+			}
+
+			genre_record.GenreID = created_genre_id
 		}
 
 		if _, err := qtx.CreateUserGenre(ctx, repository.CreateUserGenreParams{
@@ -155,14 +178,18 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) (e
 
 // ! CreateRole
 func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error) {
+
+	role = strings.ToUpper(role)
 	//~ Ensure role is provided
 	if role == "" {
 		return nil, utils.AllFieldsRequiredError
 	}
 
 	//~ Ensure role is not already available
-	if _, err := svc.repository.GetRole(ctx, role); err != nil {
+	if _, err := svc.repository.GetRole(ctx, role); err == nil {
 		return nil, utils.DuplicateRecordError
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
 	}
 
 	return svc.repository.CreateRole(ctx, role)

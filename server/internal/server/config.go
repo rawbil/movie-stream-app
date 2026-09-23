@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
+	"github.com/rawbil/movie-stream-app/internal/auth"
 	"github.com/rawbil/movie-stream-app/internal/movies"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -29,10 +30,14 @@ func (api *Api) Mount() http.Handler {
 	movieService := movies.NewService(*repo, api.DB)
 	movieHandler := movies.NewHandler(movieService)
 
+	authService := auth.NewService(*repo, api.DB)
+	authHandler := auth.NewHandler(authService)
+
 	// groups
 	api_v1 := r.Group("/api/v1")
 	movies := api_v1.Group("/movies")
 	movie_genres := movies.Group("/genres")
+	auth := api_v1.Group("/auth")
 
 	api_v1.GET("/health", func(c *gin.Context) {
 		if err := api.DB.Ping(); err != nil {
@@ -45,12 +50,20 @@ func (api *Api) Mount() http.Handler {
 		})
 	})
 
+	//! /api/v1/auth
+	auth.POST("/register", authHandler.RegisterUser)
+	auth.POST("/create-role", authHandler.CreateRole)
+
+	//! /api/v1/movies/genres
 	movie_genres.POST("/add", movieHandler.CreateGenre)
 	movie_genres.PATCH("/update", movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
 	movies.GET("/all", movieHandler.ListMovies)
+
+	//! /api/v1/movies
 	movies.POST("/create", movieHandler.CreateMovie)
 	movies.GET("/one", movieHandler.GetMovie)
+
 
 	return r
 }

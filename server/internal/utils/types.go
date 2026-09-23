@@ -19,7 +19,7 @@ type CreateMovieParams struct {
 }
 
 type CreateUserParams struct {
-	Username string `json:"username" validate:"required,min=3,max=50"`
+	Username string `json:"username" validate:"required,min=3,max=20"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,password_format"`
 	FavGenres []string `json:"fav_genres"`
@@ -32,4 +32,8 @@ type CreateGenreParams struct {
 type UpdateGenreParams struct {
 	CurrentGenre string `json:"current_genre" validate:"required"`
 	OldGenre     string `json:"old_genre" validate:"required"`
+}
+
+type CreateRoleParams struct {
+	Role string `json:"role"`
 }
