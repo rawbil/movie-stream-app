@@ -105,12 +105,13 @@ func AuthMiddleware(repository repository.Queries) gin.HandlerFunc {
 			return
 		}
 
-		ctx := context.WithValue(c.Request.Context(), userIDContextKey, user.UserID)
-		c.Request = c.Request.WithContext(ctx)
+		// ctx := context.WithValue(c.Request.Context(), userIDContextKey, user.UserID)
+		// c.Request = c.Request.WithContext(ctx)
+		c.Set("user_id", user.UserID)
+
 		c.Next()
 	}
 }
-
 
 func ValidateAccessToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}

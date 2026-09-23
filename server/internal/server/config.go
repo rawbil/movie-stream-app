@@ -57,13 +57,13 @@ func (api *Api) Mount() http.Handler {
 	auth.POST("/create-role", authutils.AuthMiddleware(*repo), authHandler.CreateRole)
 
 	//! /api/v1/movies/genres
-	movie_genres.POST("/add", movieHandler.CreateGenre)
-	movie_genres.PATCH("/update", movieHandler.UpdateGenre)
+	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), movieHandler.CreateGenre)
+	movie_genres.PATCH("/update",authutils.AuthMiddleware(*repo), movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
 	movies.GET("/all", movieHandler.ListMovies)
 
 	//! /api/v1/movies
-	movies.POST("/create", movieHandler.CreateMovie)
+	movies.POST("/create",authutils.AuthMiddleware(*repo), movieHandler.CreateMovie)
 	movies.GET("/one", movieHandler.GetMovie)
 
 	return r
