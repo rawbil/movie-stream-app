@@ -243,8 +243,7 @@ func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repositor
 }
 
 // ! CreateRole
-func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error) {
-
+func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error) {	
 	role = strings.ToUpper(role)
 	//~ Ensure role is provided
 	if role == "" {

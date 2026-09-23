@@ -1,9 +1,17 @@
 package authutils
 
 import (
+	"context"
+	"database/sql"
+	"errors"
+	"net/http"
+	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
+	"github.com/rawbil/movie-stream-app/internal/utils"
 )
 
 type Claims struct {
@@ -57,107 +65,105 @@ func GenerateAuthToken(user_id int64, secret string) (string, string, time.Time,
 	return access_token_string, refresh_token_string, issued_at, rt_expires_at, nil
 }
 
-//! AuthMiddleware
+// ! AuthMiddleware
+func AuthMiddleware(repository repository.Queries) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		auth := c.Request.Header.Get("Authorization")
+		if auth == "" {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "auth header missing", errors.New("auth header missing"))
+			c.Abort()
+			return
+		}
 
-// func AuthMiddleware(repository repository.Queries) utils.Middleware {
-// 	return func(next http.Handler) http.Handler {
-// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 			//~ Get the token from auth headers
-// 			auth := r.Header.Get("Authorization")
+		bearer_token := strings.SplitN(auth, " ", 2)
+		if len(bearer_token) != 2 || bearer_token[0] != "Bearer" {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "token misconfigured", errors.New("token misconfigured"))
+			c.Abort()
+			return
+		}
 
-// 			if auth == "" {
-// 				utils.ErrorResponse(w, "Authorization header missing", errors.New("Authorization header missing"), http.StatusUnauthorized)
-// 				return
-// 			}
+		token := bearer_token[1]
 
-// 			bearer_token := strings.Split(auth, " ")
-// 			if len(bearer_token) != 2 || bearer_token[0] != "Bearer" {
-// 				utils.ErrorResponse(w, "token malformed", errors.New("bearer token malformed"), http.StatusUnauthorized)
-// 				return
-// 			}
+		//~ Validate token
+		claims, err := ValidateAccessToken(token)
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), err)
+			c.Abort()
+			return
+		}
 
-// 			auth_token := bearer_token[1]
+		//~ Find user using the stored claims
+		user, err := repository.GetUserByID(c.Request.Context(), claims.UserID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				utils.ErrorResponse(c, http.StatusUnauthorized, "user from claim not found", errors.New("user from claim not found"))
+				c.Abort()
+				return
+			}
+			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), err)
+			c.Abort()
+			return
+		}
 
-// 			//~ Validate token
-// 			claims, err := ValidateAccessToken(auth_token)
-// 			if err != nil {
-// 				utils.ErrorResponse(w, err.Error(), err, http.StatusUnauthorized)
-// 				return
-// 			}
+		ctx := context.WithValue(c.Request.Context(), userIDContextKey, user.UserID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
 
-// 			//~ Find user from the claims user
-// 			user, err := repository.GetUserByID(r.Context(), claims.UserID)
-// 			if err != nil {
-// 				if errors.Is(err, sql.ErrNoRows) {
-// 					utils.ErrorResponse(w, "decoded uuser not found. Login again", err, http.StatusNotFound)
-// 					return
-// 				}
-// 				utils.ErrorResponse(w, err.Error(), err, http.StatusUnauthorized)
-// 				return
-// 			}
 
-// 			//~ Add user to context
-// 			ctx := context.WithValue(r.Context(), userIDContextKey, user.UserID)
+func ValidateAccessToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, errors.New("invalid token signing method")
+		}
 
-// 			r = r.WithContext(ctx)
+		return []byte(utils.ServerConfigFunc().JwtSecret), nil
+	})
 
-// 			next.ServeHTTP(w, r)
-// 		})
-// 	}
-// }
+	if err != nil {
+		return nil, err
+	}
 
-// func ValidateAccessToken(tokenString string) (*Claims, error) {
-// 	claims := &Claims{}
-// 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-// 		if token.Method != jwt.SigningMethodHS256 {
-// 			return nil, errors.New("invalid token signing method")
-// 		}
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
 
-// 		return []byte(config.ServerConfigFunc().JwtSecret), nil
-// 	})
+	if claims.TokenUse != "access" {
+		return nil, errors.New("invalid access token")
+	}
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return claims, nil
+}
 
-// 	if !token.Valid {
-// 		return nil, errors.New("invalid token")
-// 	}
+func ValidateRefreshToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, errors.New("invalid token signing method")
+		}
 
-// 	if claims.TokenUse != "access" {
-// 		return nil, errors.New("invalid access token")
-// 	}
+		return []byte(utils.ServerConfigFunc().JwtSecret), nil
+	})
 
-// 	return claims, nil
-// }
+	if err != nil {
+		return nil, err
+	}
 
-// func ValidateRefreshToken(tokenString string) (*Claims, error) {
-// 	claims := &Claims{}
-// 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-// 		if token.Method != jwt.SigningMethodHS256 {
-// 			return nil, errors.New("invalid token signing method")
-// 		}
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
 
-// 		return []byte(config.ServerConfigFunc().JwtSecret), nil
-// 	})
+	if claims.TokenUse != "refresh" {
+		return nil, errors.New("invalid refresh token")
+	}
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return claims, nil
+}
 
-// 	if !token.Valid {
-// 		return nil, errors.New("invalid token")
-// 	}
+func GetUserIDFromContext(ctx context.Context) (int64, bool) {
+	user_id, ok := ctx.Value(userIDContextKey).(int64)
 
-// 	if claims.TokenUse != "refresh" {
-// 		return nil, errors.New("invalid refresh token")
-// 	}
-
-// 	return claims, nil
-// }
-
-// func GetUserIDFromContext(ctx context.Context) (int64, bool) {
-// 	user_id, ok := ctx.Value(userIDContextKey).(int64)
-
-// 	return user_id, ok
-// }
+	return user_id, ok
+}

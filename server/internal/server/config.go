@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/auth"
+	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
 	"github.com/rawbil/movie-stream-app/internal/movies"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -53,7 +54,7 @@ func (api *Api) Mount() http.Handler {
 	//! /api/v1/auth
 	auth.POST("/register", authHandler.RegisterUser)
 	auth.POST("/login", authHandler.LoginUser)
-	auth.POST("/create-role", authHandler.CreateRole)
+	auth.POST("/create-role", authutils.AuthMiddleware(*repo), authHandler.CreateRole)
 
 	//! /api/v1/movies/genres
 	movie_genres.POST("/add", movieHandler.CreateGenre)
@@ -64,7 +65,6 @@ func (api *Api) Mount() http.Handler {
 	//! /api/v1/movies
 	movies.POST("/create", movieHandler.CreateMovie)
 	movies.GET("/one", movieHandler.GetMovie)
-
 
 	return r
 }

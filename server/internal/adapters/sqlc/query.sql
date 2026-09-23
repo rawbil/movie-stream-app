@@ -141,3 +141,7 @@ WHERE role = ?;
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = ?;
+
+-- name: GetUserByID :one
+SELECT * FROM users
+WHERE user_id = ?;
