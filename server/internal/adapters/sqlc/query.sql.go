@@ -57,7 +57,7 @@ func (q *Queries) CreateMovieGenre(ctx context.Context, arg CreateMovieGenrePara
 }
 
 const createRefreshToken = `-- name: CreateRefreshToken :execresult
-INSERT INTO refresh_tokens(user_id, hashed_token)
+INSERT IGNORE INTO refresh_tokens(user_id, hashed_token)
 VALUES (?, ?)
 `
 
@@ -254,6 +254,23 @@ func (q *Queries) GetMovieGenre(ctx context.Context, arg GetMovieGenreParams) (M
 	return i, err
 }
 
+const getRefreshToken = `-- name: GetRefreshToken :one
+SELECT id, user_id, hashed_token, revoked FROM refresh_tokens
+WHERE user_id = ?
+`
+
+func (q *Queries) GetRefreshToken(ctx context.Context, userID int64) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, getRefreshToken, userID)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.HashedToken,
+		&i.Revoked,
+	)
+	return i, err
+}
+
 const getRole = `-- name: GetRole :one
 SELECT role_id, role FROM roles
 WHERE role = ?
@@ -423,4 +440,21 @@ type UpdateGenreParams struct {
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, updateGenre, arg.GenreName, arg.GenreID)
+}
+
+const updateRefreshToken = `-- name: UpdateRefreshToken :execresult
+UPDATE refresh_tokens
+SET hashed_token = ?,
+    revoked = ?
+WHERE user_id = ?
+`
+
+type UpdateRefreshTokenParams struct {
+	HashedToken string `json:"hashed_token"`
+	Revoked     bool   `json:"revoked"`
+	UserID      int64  `json:"user_id"`
+}
+
+func (q *Queries) UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateRefreshToken, arg.HashedToken, arg.Revoked, arg.UserID)
 }

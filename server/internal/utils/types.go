@@ -11,17 +11,17 @@ package utils
 // }
 
 type CreateMovieParams struct {
-	ImdbID     string `json:"imdb_id" validate:"required"`
-	Title      string `json:"title" validate:"required,min=3,max=100"`
-	PosterPath string `json:"poster_path" validate:"required,url"`
-	YoutubeID  string `json:"youtube_id"`
-	Genres      []string `json:"genres"`
+	ImdbID     string   `json:"imdb_id" validate:"required"`
+	Title      string   `json:"title" validate:"required,min=3,max=100"`
+	PosterPath string   `json:"poster_path" validate:"required,url"`
+	YoutubeID  string   `json:"youtube_id"`
+	Genres     []string `json:"genres"`
 }
 
 type CreateUserParams struct {
-	Username string `json:"username" validate:"required,min=3,max=20"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,password_format"`
+	Username  string   `json:"username" validate:"required,min=3,max=20"`
+	Email     string   `json:"email" validate:"required,email"`
+	Password  string   `json:"password" validate:"required,password_format"`
 	FavGenres []string `json:"fav_genres"`
 }
 
@@ -36,4 +36,9 @@ type UpdateGenreParams struct {
 
 type CreateRoleParams struct {
 	Role string `json:"role"`
+}
+
+type LoginParams struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }

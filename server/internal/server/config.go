@@ -52,6 +52,7 @@ func (api *Api) Mount() http.Handler {
 
 	//! /api/v1/auth
 	auth.POST("/register", authHandler.RegisterUser)
+	auth.POST("/login", authHandler.LoginUser)
 	auth.POST("/create-role", authHandler.CreateRole)
 
 	//! /api/v1/movies/genres

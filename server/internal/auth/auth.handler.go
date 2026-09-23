@@ -46,7 +46,6 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 			return
 		}
 
-
 		if err == utils.NoEmptyGenre {
 			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
 			return
@@ -63,6 +62,71 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Registration successful!",
+	})
+}
+
+func (h *Handler) LoginUser(c *gin.Context) {
+	var params utils.LoginParams
+
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
+		return
+	}
+
+	user, access_token, refresh_token, err := h.Service.LoginUser(c.Request.Context(), params)
+	if err != nil {
+
+		if err == utils.AllFieldsRequiredError || err == utils.InvalidEmailFormat {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
+			return
+		}
+
+		if err == utils.NoRecordError || err == utils.IncorrectPassword {
+			utils.ErrorResponse(c, http.StatusBadRequest, "invalid credentials... try again", err)
+			return
+		}
+
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	// rt_cookie := http.Cookie{
+	// 	Name:     "__refresh_token__",
+	// 	Value:    refresh_token,
+	// 	MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
+	// 	Path:     "/",
+	// 	HttpOnly: true,                                     // Prevents client-side JS access
+	// 	Secure:   utils.ServerConfigFunc().AppEnv != "dev", // true in prod (SET APP_ENV=prod)
+	// }
+
+	// http.SetCookie(w, &rt_cookie)
+	maxAge := 7 * 24 * 60 * 60
+
+	// Determine if we are in production
+	isProd := utils.ServerConfigFunc().AppEnv != "dev"
+
+	c.SetCookie(
+		"__Host-refresh_token", // Cookie Name (Consider changing to "__Host-refresh_token" for maximum security)
+		refresh_token,          // Value
+		maxAge,                 // MaxAge in seconds (Fixed)
+		"/",                    // Path
+		"",                     // Domain (Leaving this empty is usually best)
+		isProd,                 // Secure (true means HTTPS only)
+		true,                   // HttpOnly (Prevents XSS access)
+	)
+
+	updated_user := map[string]any{
+		"public_id":  user.PublicID,
+		"username":   user.Username,
+		"email":      user.Email,
+		"created_at": user.CreatedAt,
+		"updated_at": user.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Login successful",
+		"access_token": access_token,
+		"user":         updated_user,
 	})
 }
 

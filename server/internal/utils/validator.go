@@ -50,6 +50,10 @@ func ValidateCreateUser(arg repository.CreateUserParams) error {
 	})
 }
 
+func ValidateLoginUser(arg LoginParams) error {
+	return validate.Struct(arg)
+}
+
 func ValidationErrors(tag string, err error) bool {
 	var validationErrors validator.ValidationErrors
 

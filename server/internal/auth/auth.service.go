@@ -15,6 +15,7 @@ import (
 type Service interface {
 	RegisterUser(ctx context.Context, arg utils.CreateUserParams) error
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
+	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error)
 }
 
 type Svc struct {
@@ -174,6 +175,71 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) er
 	}
 
 	return nil
+}
+
+// ! Login
+func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error) {
+	//~ Validate fields
+	if err := utils.ValidateLoginUser(arg); err != nil {
+		if utils.ValidationErrors("required", err) {
+			return repository.User{}, "", "", utils.AllFieldsRequiredError
+		}
+
+		if utils.ValidationErrors("email", err) {
+			return repository.User{}, "", "", utils.InvalidEmailFormat
+		}
+
+		return repository.User{}, "", "", err
+	}
+
+	//~ Get user with email
+	user, err := svc.repository.GetUserByEmail(ctx, arg.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repository.User{}, "", "", utils.NoRecordError
+		}
+		return repository.User{}, "", "", err
+	}
+
+	//~ Compare passwords
+	if err := authutils.ComparePasswords(user.Password, arg.Password); err != nil {
+		return repository.User{}, "", "", utils.IncorrectPassword
+	}
+
+	//~ Generate JWT Tokens
+	jwt_secret := utils.ServerConfigFunc().JwtSecret
+	access_token, refresh_token, _, _, err := authutils.GenerateAuthToken(user.UserID, jwt_secret)
+	if err != nil {
+		return repository.User{}, "", "", err
+	}
+
+	//~ Hash refresh token
+	hashed_rt := authutils.RefreshTokenHash(refresh_token)
+
+	//~ Create refresh token record if not exist, or update if user already present
+	if _, err := svc.repository.GetRefreshToken(ctx, user.UserID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return repository.User{}, "", "", err
+		}
+		// if record does not exist, create it(First-time login)
+		if _, err := svc.repository.CreateRefreshToken(ctx, repository.CreateRefreshTokenParams{
+			UserID:      user.UserID,
+			HashedToken: hashed_rt,
+		}); err != nil {
+			return repository.User{}, "", "", err
+		}
+	} else {
+		// if record exists, update it
+		if _, err := svc.repository.UpdateRefreshToken(ctx, repository.UpdateRefreshTokenParams{
+			UserID:      user.UserID,
+			HashedToken: hashed_rt,
+			Revoked:     false,
+		}); err != nil {
+			return repository.User{}, "", "", err
+		}
+	}
+
+	return user, access_token, refresh_token, nil
 }
 
 // ! CreateRole

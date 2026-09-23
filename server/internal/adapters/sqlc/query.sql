@@ -101,8 +101,18 @@ INSERT INTO users(username, email, password)
 VALUES (?, ?, ?);
 
 -- name: CreateRefreshToken :execresult
-INSERT INTO refresh_tokens(user_id, hashed_token)
+INSERT IGNORE INTO refresh_tokens(user_id, hashed_token)
 VALUES (?, ?);
+
+-- name: UpdateRefreshToken :execresult
+UPDATE refresh_tokens
+SET hashed_token = ?,
+    revoked = ?
+WHERE user_id = ?;
+
+-- name: GetRefreshToken :one
+SELECT * FROM refresh_tokens
+WHERE user_id = ?;
 
 -- name: CreateRole :execresult
 INSERT INTO roles(role)
