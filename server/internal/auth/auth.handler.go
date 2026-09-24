@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -155,5 +156,32 @@ func (h *Handler) CreateRole(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "role added",
+	})
+}
+
+func (h *Handler) Logout(c *gin.Context) {
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "user not found in context", errors.New("user missing in context"))
+		return
+	}
+
+	user_id, ok := userIDValue.(int64)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid user id in context", errors.New("invalid user id in context"))
+		return
+	}
+
+	if err := h.Service.Logout(c.Request.Context(), user_id); err != nil {
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "user not found", err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logged out successfully",
 	})
 }

@@ -447,6 +447,21 @@ func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
 	return items, nil
 }
 
+const revokeRefreshToken = `-- name: RevokeRefreshToken :execresult
+UPDATE refresh_tokens
+SET revoked = ?
+WHERE user_id = ?
+`
+
+type RevokeRefreshTokenParams struct {
+	Revoked bool  `json:"revoked"`
+	UserID  int64 `json:"user_id"`
+}
+
+func (q *Queries) RevokeRefreshToken(ctx context.Context, arg RevokeRefreshTokenParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, revokeRefreshToken, arg.Revoked, arg.UserID)
+}
+
 const updateGenre = `-- name: UpdateGenre :execresult
 UPDATE genres
 SET genre_name = ?

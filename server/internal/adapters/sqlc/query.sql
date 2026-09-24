@@ -110,6 +110,11 @@ SET hashed_token = ?,
     revoked = ?
 WHERE user_id = ?;
 
+-- name: RevokeRefreshToken :execresult
+UPDATE refresh_tokens
+SET revoked = ?
+WHERE user_id = ?;
+
 -- name: GetRefreshToken :one
 SELECT * FROM refresh_tokens
 WHERE user_id = ?;

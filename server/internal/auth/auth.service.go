@@ -16,6 +16,7 @@ type Service interface {
 	RegisterUser(ctx context.Context, arg utils.CreateUserParams) error
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
 	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error)
+	Logout(ctx context.Context, user_id int64) error 
 }
 
 type Svc struct {
@@ -243,7 +244,7 @@ func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repositor
 }
 
 // ! CreateRole
-func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error) {	
+func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error) {
 	role = strings.ToUpper(role)
 	//~ Ensure role is provided
 	if role == "" {
@@ -258,4 +259,34 @@ func (svc *Svc) CreateRole(ctx context.Context, role string) (sql.Result, error)
 	}
 
 	return svc.repository.CreateRole(ctx, role)
+}
+
+// ! Logout
+func (svc *Svc) Logout(ctx context.Context, user_id int64) error {
+	//~ Find user with the id
+	user, err := svc.repository.GetUserByID(ctx, user_id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NoRecordError
+		}
+		return err
+	}
+
+	//~ Find user's refresh token
+	if _, err := svc.repository.GetRefreshToken(ctx, user.UserID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NoRecordError
+		}
+		return err
+	}
+
+	//~ Revoke refresh token
+	if _, err := svc.repository.RevokeRefreshToken(ctx, repository.RevokeRefreshTokenParams{
+		UserID:  user.UserID,
+		Revoked: true,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
