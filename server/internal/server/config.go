@@ -56,6 +56,7 @@ func (api *Api) Mount() http.Handler {
 	auth.POST("/login", authHandler.LoginUser)
 	auth.POST("/logout", authutils.AuthMiddleware(*repo), authHandler.Logout)
 	auth.POST("/create-role", authutils.AuthMiddleware(*repo), authHandler.CreateRole)
+	auth.POST("/refresh_tokens", authHandler.RefreshTokens)
 
 	//! /api/v1/movies/genres
 	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), movieHandler.CreateGenre)

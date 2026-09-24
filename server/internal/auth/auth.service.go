@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"strings"
@@ -16,7 +17,8 @@ type Service interface {
 	RegisterUser(ctx context.Context, arg utils.CreateUserParams) error
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
 	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error)
-	Logout(ctx context.Context, user_id int64) error 
+	Logout(ctx context.Context, user_id int64) error
+	RefreshTokens(ctx context.Context, rt string) (string, string, error)
 }
 
 type Svc struct {
@@ -289,4 +291,59 @@ func (svc *Svc) Logout(ctx context.Context, user_id int64) error {
 	}
 
 	return nil
+}
+
+// ! Refresh Tokens
+func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, error) {
+	if rt == "" {
+		return "", "", utils.AllFieldsRequiredError
+	}
+
+	//~ Validate refresh token
+	claims, err := authutils.ValidateRefreshToken(rt)
+	if err != nil {
+		return "", "", err
+	}
+
+	user_id := claims.UserID
+
+	//~ Get stored refresh token
+	hashed_rt, err := svc.repository.GetRefreshToken(ctx, user_id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", utils.NoRecordError
+		}
+		return "", "", err
+	}
+
+	//~ Ensure token is not revoked
+	if hashed_rt.Revoked {
+		return "", "", utils.TokenRevoked
+	}
+
+	//~ Compare tokens
+	hashed_token := authutils.RefreshTokenHash(rt)
+	if subtle.ConstantTimeCompare([]byte(hashed_rt.HashedToken), []byte(hashed_token)) != 1 {
+		return "", "", utils.InvalidToken
+	}
+
+	//~ Generate new tokens
+	secret := utils.ServerConfigFunc().JwtSecret
+	access_token, refresh_token, _, _, err := authutils.GenerateAuthToken(user_id, secret)
+	if err != nil {
+		return "", "", err
+	}
+
+	new_hash := authutils.RefreshTokenHash(refresh_token)
+
+	//~ Update refresh token record with new token
+	if _, err := svc.repository.UpdateRefreshToken(ctx, repository.UpdateRefreshTokenParams{
+		HashedToken: new_hash,
+		UserID:      user_id,
+		Revoked:     false,
+	}); err != nil {
+		return "", "", err
+	}
+
+	return access_token, refresh_token, nil
 }

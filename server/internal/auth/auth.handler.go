@@ -105,15 +105,19 @@ func (h *Handler) LoginUser(c *gin.Context) {
 
 	// Determine if we are in production
 	isProd := utils.ServerConfigFunc().AppEnv != "dev"
+	cookieName := "__refresh_token"
+	if isProd {
+		cookieName = "__Host-refresh_token" //__HOST makes the cookie secure and ensures it is only transmitted via https
+	}
 
 	c.SetCookie(
-		"__Host-refresh_token", // Cookie Name (Consider changing to "__Host-refresh_token" for maximum security)
-		refresh_token,          // Value
-		maxAge,                 // MaxAge in seconds (Fixed)
-		"/",                    // Path
-		"",                     // Domain (Leaving this empty is usually best)
-		isProd,                 // Secure (true means HTTPS only)
-		true,                   // HttpOnly (Prevents XSS access)
+		cookieName,    // Cookie Name
+		refresh_token, // Value
+		maxAge,        // MaxAge in seconds (Fixed)
+		"/",           // Path
+		"",            // Domain (Leaving this empty is usually best)
+		isProd,        // Secure (true means HTTPS only)
+		true,          // HttpOnly (Prevents XSS access)
 	)
 
 	updated_user := map[string]any{
@@ -183,5 +187,59 @@ func (h *Handler) Logout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
+	})
+}
+
+func (h *Handler) RefreshTokens(c *gin.Context) {
+	isProd := utils.ServerConfigFunc().AppEnv != "dev"
+
+	cookieName := "__refresh_token"
+	if isProd {
+		cookieName = "__Host-refresh_token"	
+	}
+
+	rt_cookie, err := c.Request.Cookie(cookieName)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "refresh token missing", err)
+		return
+	}
+
+	rt := rt_cookie.Value
+
+	access_token, refresh_token, err := h.Service.RefreshTokens(c.Request.Context(), rt)
+	if err != nil {
+		if err == utils.AllFieldsRequiredError {
+			utils.ErrorResponse(c, http.StatusBadRequest, "refresh token missing", err)
+			return
+		}
+
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "token missing in records", err)
+			return
+		}
+
+		if err == utils.TokenRevoked || err == utils.InvalidToken {
+			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	maxAge := 7 * 24 * 60 * 60
+
+	c.SetCookie(
+		"__Host-refresh_token", // Cookie Name (Consider changing to "__Host-refresh_token" for maximum security)
+		refresh_token,          // Value
+		maxAge,                 // MaxAge in seconds (Fixed)
+		"/",                    // Path
+		"",                     // Domain (Leaving this empty is usually best)
+		isProd,                 // Secure (true means HTTPS only)
+		true,                   // HttpOnly (Prevents XSS access)
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "success",
+		"access_token": access_token,
 	})
 }

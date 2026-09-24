@@ -20,6 +20,8 @@ var (
 	InvalidPasswordFormat = errors.New("password should be at between 6-20 characters long, have at least alphanumerical and have at least one special character")
 	NoEmptyGenre = errors.New("All genre fields should be populated")
 	IncorrectPassword = errors.New("incorrect password")
+	TokenRevoked = errors.New("token revoked. Login again")
+	InvalidToken = errors.New("invalid token. Login again")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {
