@@ -124,7 +124,7 @@ SELECT * FROM refresh_tokens
 WHERE user_id = ?;
 
 -- name: CreateRole :execresult
-INSERT INTO roles(role)
+INSERT IGNORE INTO roles(role)
 VALUES (?);
 
 -- name: CreateUserPermission :execresult
@@ -210,3 +210,28 @@ GROUP BY
     m.ranking_name
 ORDER BY m.ranking_value
 LIMIT 5;
+
+
+-- name: AddUserPermission :execresult
+INSERT INTO user_permissions(permission)
+VALUES (?);
+
+-- name: GetUserPermission :one
+SELECT * FROM user_permissions
+WHERE permission = ?;
+
+-- name: AddRolePermission :execresult
+INSERT IGNORE INTO role_permissions(role_id, permission_id)
+VALUES (?, ?);
+
+-- name: GetRolePermission :one
+SELECT * FROM role_permissions
+WHERE role_id = ? AND permission_id = ?;
+
+-- name: GetRoleID :one
+SELECT role_id FROM roles
+WHERE role = ?;
+
+-- name: GetPermissionID :one
+SELECT id FROM user_permissions
+WHERE permission = ?;

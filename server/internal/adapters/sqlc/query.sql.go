@@ -38,6 +38,29 @@ func (q *Queries) AddRanking(ctx context.Context, arg AddRankingParams) (sql.Res
 	return q.db.ExecContext(ctx, addRanking, arg.RankingName, arg.RankingValue)
 }
 
+const addRolePermission = `-- name: AddRolePermission :execresult
+INSERT IGNORE INTO role_permissions(role_id, permission_id)
+VALUES (?, ?)
+`
+
+type AddRolePermissionParams struct {
+	RoleID       int64 `json:"role_id"`
+	PermissionID int64 `json:"permission_id"`
+}
+
+func (q *Queries) AddRolePermission(ctx context.Context, arg AddRolePermissionParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addRolePermission, arg.RoleID, arg.PermissionID)
+}
+
+const addUserPermission = `-- name: AddUserPermission :execresult
+INSERT INTO user_permissions(permission)
+VALUES (?)
+`
+
+func (q *Queries) AddUserPermission(ctx context.Context, permission string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addUserPermission, permission)
+}
+
 const createGenre = `-- name: CreateGenre :execresult
 INSERT IGNORE INTO genres(genre_name)
 VALUES (?)
@@ -99,7 +122,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 }
 
 const createRole = `-- name: CreateRole :execresult
-INSERT INTO roles(role)
+INSERT IGNORE INTO roles(role)
 VALUES (?)
 `
 
@@ -339,6 +362,18 @@ func (q *Queries) GetMovieReviews(ctx context.Context, movieID int64) ([]MovieRe
 	return items, nil
 }
 
+const getPermissionID = `-- name: GetPermissionID :one
+SELECT id FROM user_permissions
+WHERE permission = ?
+`
+
+func (q *Queries) GetPermissionID(ctx context.Context, permission string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getPermissionID, permission)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getRanking = `-- name: GetRanking :one
 SELECT id, ranking_name, ranking_value FROM rankings
 WHERE ranking_name = ?
@@ -481,6 +516,35 @@ func (q *Queries) GetRole(ctx context.Context, role string) (Role, error) {
 	return i, err
 }
 
+const getRoleID = `-- name: GetRoleID :one
+SELECT role_id FROM roles
+WHERE role = ?
+`
+
+func (q *Queries) GetRoleID(ctx context.Context, role string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getRoleID, role)
+	var role_id int64
+	err := row.Scan(&role_id)
+	return role_id, err
+}
+
+const getRolePermission = `-- name: GetRolePermission :one
+SELECT role_id, permission_id FROM role_permissions
+WHERE role_id = ? AND permission_id = ?
+`
+
+type GetRolePermissionParams struct {
+	RoleID       int64 `json:"role_id"`
+	PermissionID int64 `json:"permission_id"`
+}
+
+func (q *Queries) GetRolePermission(ctx context.Context, arg GetRolePermissionParams) (RolePermission, error) {
+	row := q.db.QueryRowContext(ctx, getRolePermission, arg.RoleID, arg.PermissionID)
+	var i RolePermission
+	err := row.Scan(&i.RoleID, &i.PermissionID)
+	return i, err
+}
+
 const getUniqueMovie = `-- name: GetUniqueMovie :one
 SELECT movie_id, public_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
 WHERE imdb_id = ?
@@ -540,6 +604,18 @@ func (q *Queries) GetUserByID(ctx context.Context, userID int64) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const getUserPermission = `-- name: GetUserPermission :one
+SELECT id, permission FROM user_permissions
+WHERE permission = ?
+`
+
+func (q *Queries) GetUserPermission(ctx context.Context, permission string) (UserPermission, error) {
+	row := q.db.QueryRowContext(ctx, getUserPermission, permission)
+	var i UserPermission
+	err := row.Scan(&i.ID, &i.Permission)
 	return i, err
 }
 
