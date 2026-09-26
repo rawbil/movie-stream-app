@@ -235,3 +235,11 @@ WHERE role = ?;
 -- name: GetPermissionID :one
 SELECT id FROM user_permissions
 WHERE permission = ?;
+
+-- name: ListUserPermissions :many
+SELECT up.permission FROM user_permissions up
+JOIN role_permissions rp
+ON rp.permission_id = up.id
+JOIN user_roles ur
+ON ur.role_id = rp.role_id
+WHERE ur.user_id = ?;

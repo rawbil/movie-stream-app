@@ -721,6 +721,38 @@ func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
 	return items, nil
 }
 
+const listUserPermissions = `-- name: ListUserPermissions :many
+SELECT up.permission FROM user_permissions up
+JOIN role_permissions rp
+ON rp.permission_id = up.id
+JOIN user_roles ur
+ON ur.role_id = rp.role_id
+WHERE ur.user_id = ?
+`
+
+func (q *Queries) ListUserPermissions(ctx context.Context, userID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUserPermissions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var permission string
+		if err := rows.Scan(&permission); err != nil {
+			return nil, err
+		}
+		items = append(items, permission)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeRefreshToken = `-- name: RevokeRefreshToken :execresult
 UPDATE refresh_tokens
 SET revoked = ?

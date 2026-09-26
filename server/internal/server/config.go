@@ -10,6 +10,8 @@ import (
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/auth"
 	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
+	"github.com/rawbil/movie-stream-app/internal/authorization"
+	middlewares "github.com/rawbil/movie-stream-app/internal/middleware"
 	"github.com/rawbil/movie-stream-app/internal/movies"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -55,22 +57,22 @@ func (api *Api) Mount() http.Handler {
 	auth.POST("/register", authHandler.RegisterUser)
 	auth.POST("/login", authHandler.LoginUser)
 	auth.POST("/logout", authutils.AuthMiddleware(*repo), authHandler.Logout)
-	auth.POST("/create-role", authutils.AuthMiddleware(*repo), authHandler.CreateRole)
+	auth.POST("/create-role", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionCreateRole), authHandler.CreateRole)
 	auth.POST("/refresh_tokens", authHandler.RefreshTokens)
 
 	//! /api/v1/movies/genres
-	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), movieHandler.CreateGenre)
-	movie_genres.PATCH("/update", authutils.AuthMiddleware(*repo), movieHandler.UpdateGenre)
+	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddGenre), movieHandler.CreateGenre)
+	movie_genres.PATCH("/update", authutils.AuthMiddleware(*repo),middlewares.RoleMiddleware(*repo, authorization.PermissionUpdateGenre), movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
 
 	//! /api/v1/movies
 	movies.GET("/all", movieHandler.ListMovies)
-	movies.POST("/add-rankings", authutils.AuthMiddleware(*repo), movieHandler.AddRankings)
-	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), movieHandler.AddMovieReview)
+	movies.POST("/add-rankings", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddRankings), movieHandler.AddRankings)
+	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddReview),movieHandler.AddMovieReview)
 	movies.GET("/recommended", authutils.AuthMiddleware(*repo), movieHandler.GetMovieRecommendations)
 
 	//! /api/v1/movies
-	movies.POST("/create", authutils.AuthMiddleware(*repo), movieHandler.CreateMovie)
+	movies.POST("/create", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionCreateMovie), movieHandler.CreateMovie)
 	movies.GET("/one", movieHandler.GetMovie)
 
 	return r
