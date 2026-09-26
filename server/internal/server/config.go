@@ -62,6 +62,8 @@ func (api *Api) Mount() http.Handler {
 	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), movieHandler.CreateGenre)
 	movie_genres.PATCH("/update", authutils.AuthMiddleware(*repo), movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
+
+	//! /api/v1/movies
 	movies.GET("/all", movieHandler.ListMovies)
 	movies.POST("/add-rankings", authutils.AuthMiddleware(*repo), movieHandler.AddRankings)
 	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), movieHandler.AddMovieReview)
