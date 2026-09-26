@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
 
@@ -259,15 +260,9 @@ func (h *Handler) AddMovieReview(c *gin.Context) {
 
 // ! MovieRecommendations
 func (h *Handler) GetMovieRecommendations(c *gin.Context) {
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "user not found in context", errors.New("user missing in context"))
-		return
-	}
-
-	user_id, ok := userIDValue.(int64)
-	if !ok {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid user id in context", errors.New("invalid user id in context"))
+	user_id, err := authutils.GetUserIDFromContext(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, err.Error(), err)
 		return
 	}
 

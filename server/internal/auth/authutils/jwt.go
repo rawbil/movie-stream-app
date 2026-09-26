@@ -1,7 +1,6 @@
 package authutils
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -163,8 +162,23 @@ func ValidateRefreshToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-func GetUserIDFromContext(ctx context.Context) (int64, bool) {
-	user_id, ok := ctx.Value(userIDContextKey).(int64)
+// func GetUserIDFromContext(ctx context.Context) (int64, bool) {
+// 	user_id, ok := ctx.Value(userIDContextKey).(int64)
 
-	return user_id, ok
+// 	return user_id, ok
+// }
+
+func GetUserIDFromContext(c *gin.Context) (int64, error) {
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		return 0, errors.New("user missing in context")
+
+	}
+
+	user_id, ok := userIDValue.(int64)
+	if !ok {
+		return 0, errors.New("invalid user id in context")
+	}
+
+	return user_id, nil
 }
