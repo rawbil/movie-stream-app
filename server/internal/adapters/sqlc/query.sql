@@ -208,4 +208,5 @@ GROUP BY
     m.youtube_id, 
     m.ranking_value, 
     m.ranking_name
-ORDER BY m.ranking_value;
+ORDER BY m.ranking_value
+LIMIT 5;

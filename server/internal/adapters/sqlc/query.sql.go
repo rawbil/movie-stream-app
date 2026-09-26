@@ -406,6 +406,7 @@ GROUP BY
     m.ranking_value, 
     m.ranking_name
 ORDER BY m.ranking_value
+LIMIT 5
 `
 
 type GetRecommendedMoviesRow struct {
