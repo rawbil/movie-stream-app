@@ -238,6 +238,16 @@ func (h *Handler) AddMovieReview(c *gin.Context) {
 	}
 
 	if err := h.Service.AddReview(c.Request.Context(), publicID, params); err != nil {
+		if err == utils.AllFieldsRequiredError {
+			utils.ErrorResponse(c, http.StatusBadRequest, "review field required", err)
+			return
+		}
+
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "movie not found", err)
+			return
+		}
+
 		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
@@ -245,4 +255,34 @@ func (h *Handler) AddMovieReview(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "success",
 	})
+}
+
+// ! MovieRecommendations
+func (h *Handler) GetMovieRecommendations(c *gin.Context) {
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "user not found in context", errors.New("user missing in context"))
+		return
+	}
+
+	user_id, ok := userIDValue.(int64)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid user id in context", errors.New("invalid user id in context"))
+		return
+	}
+
+	movies, err := h.Service.GetMovieRecommendations(c.Request.Context(), user_id)
+	if err != nil {
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "your favourite genres have no movies yet", err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"movies": movies,
+	})
+
 }

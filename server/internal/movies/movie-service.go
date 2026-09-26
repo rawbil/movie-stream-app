@@ -23,6 +23,7 @@ type Service interface {
 	CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error
 	AddRankings(ctx context.Context, arg utils.AddRankingsParams) (error, string)
 	AddReview(ctx context.Context, publicID uuid.UUID, arg utils.AddReviewParams) error
+	GetMovieRecommendations(ctx context.Context, userID int64) ([]repository.GetRecommendedMoviesRow, error)
 }
 
 type Svc struct {
@@ -308,10 +309,6 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, arg utils.Add
 		return err
 	}
 
-	if len(rankings) < 1 {
-		return utils.NoRecordError
-	}
-
 	var ranking_names string
 
 	for _, ranking := range rankings {
@@ -409,4 +406,20 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, arg utils.Add
 	}
 
 	return nil
+}
+
+// ! Get Recommended Movies
+func (svc *Svc) GetMovieRecommendations(ctx context.Context, userID int64) ([]repository.GetRecommendedMoviesRow, error) {
+
+	movies, err := svc.repository.GetRecommendedMovies(ctx, userID)
+	if err != nil {
+		return []repository.GetRecommendedMoviesRow{}, err
+	}
+
+	if len(movies) < 1 {
+		return []repository.GetRecommendedMoviesRow{}, utils.NoRecordError
+	}
+
+	return movies, nil
+
 }

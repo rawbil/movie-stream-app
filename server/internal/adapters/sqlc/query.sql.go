@@ -379,6 +379,78 @@ func (q *Queries) GetRankings(ctx context.Context) ([]Ranking, error) {
 	return items, nil
 }
 
+const getRecommendedMovies = `-- name: GetRecommendedMovies :many
+SELECT 
+    BIN_TO_UUID(m.public_id) AS public_id, 
+    m.imdb_id, 
+    m.title, 
+    m.poster_path, 
+    m.youtube_id, 
+    m.ranking_value, 
+    m.ranking_name,
+    GROUP_CONCAT(g.genre_name ORDER BY g.genre_name) AS genres
+FROM user_fav_genres fav
+JOIN movie_genres mg
+    ON fav.genre_id = mg.genre_id
+JOIN movies m
+    ON m.movie_id = mg.movie_id
+JOIN genres g
+    ON g.genre_id = fav.genre_id
+WHERE fav.user_id = ?
+GROUP BY
+    BIN_TO_UUID(m.public_id), 
+    m.imdb_id, 
+    m.title, 
+    m.poster_path, 
+    m.youtube_id, 
+    m.ranking_value, 
+    m.ranking_name
+ORDER BY m.ranking_value
+`
+
+type GetRecommendedMoviesRow struct {
+	PublicID     string         `json:"public_id"`
+	ImdbID       string         `json:"imdb_id"`
+	Title        string         `json:"title"`
+	PosterPath   string         `json:"poster_path"`
+	YoutubeID    sql.NullString `json:"youtube_id"`
+	RankingValue sql.NullInt32  `json:"ranking_value"`
+	RankingName  sql.NullString `json:"ranking_name"`
+	Genres       sql.NullString `json:"genres"`
+}
+
+func (q *Queries) GetRecommendedMovies(ctx context.Context, userID int64) ([]GetRecommendedMoviesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRecommendedMovies, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecommendedMoviesRow
+	for rows.Next() {
+		var i GetRecommendedMoviesRow
+		if err := rows.Scan(
+			&i.PublicID,
+			&i.ImdbID,
+			&i.Title,
+			&i.PosterPath,
+			&i.YoutubeID,
+			&i.RankingValue,
+			&i.RankingName,
+			&i.Genres,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRefreshToken = `-- name: GetRefreshToken :one
 SELECT id, user_id, hashed_token, revoked FROM refresh_tokens
 WHERE user_id = ?
