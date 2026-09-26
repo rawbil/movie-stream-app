@@ -54,6 +54,14 @@ func ValidateLoginUser(arg LoginParams) error {
 	return validate.Struct(arg)
 }
 
+func ValidateAddReview(arg AddReviewParams) error {
+	return validate.Struct(arg)
+}
+
+func ValidateAddRankings(arg AddRankingsParams) error {
+	return validate.Struct(arg)
+}
+
 func ValidationErrors(tag string, err error) bool {
 	var validationErrors validator.ValidationErrors
 

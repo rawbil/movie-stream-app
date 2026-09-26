@@ -15,8 +15,9 @@ type DBConfig struct {
 
 type ServerConfig struct {
 	ServerAddr string
-	JwtSecret string
-	AppEnv string
+	JwtSecret  string
+	AppEnv     string
+	GroqApiKey string
 }
 
 func DBConfigFunc() *DBConfig {
@@ -32,8 +33,9 @@ func DBConfigFunc() *DBConfig {
 func ServerConfigFunc() *ServerConfig {
 	return &ServerConfig{
 		ServerAddr: GetEnv("SERVER_ADDR", ":8080"),
-		JwtSecret: GetEnv("JWT_SECRET", ""),
-		AppEnv: GetEnv("APP_ENV", "dev"),
+		JwtSecret:  GetEnv("JWT_SECRET", ""),
+		AppEnv:     GetEnv("APP_ENV", "dev"),
+		GroqApiKey: GetEnv("GROQ_API_KEY", ""),
 	}
 }
 

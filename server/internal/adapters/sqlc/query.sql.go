@@ -10,6 +10,34 @@ import (
 	"database/sql"
 )
 
+const addMovieReview = `-- name: AddMovieReview :execresult
+INSERT INTO movie_reviews(movie_id, review)
+values(?, ?)
+`
+
+type AddMovieReviewParams struct {
+	MovieID int64  `json:"movie_id"`
+	Review  string `json:"review"`
+}
+
+func (q *Queries) AddMovieReview(ctx context.Context, arg AddMovieReviewParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addMovieReview, arg.MovieID, arg.Review)
+}
+
+const addRanking = `-- name: AddRanking :execresult
+INSERT IGNORE INTO rankings(ranking_name, ranking_value)
+VALUES (?, ?)
+`
+
+type AddRankingParams struct {
+	RankingName  string `json:"ranking_name"`
+	RankingValue int32  `json:"ranking_value"`
+}
+
+func (q *Queries) AddRanking(ctx context.Context, arg AddRankingParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addRanking, arg.RankingName, arg.RankingValue)
+}
+
 const createGenre = `-- name: CreateGenre :execresult
 INSERT IGNORE INTO genres(genre_name)
 VALUES (?)
@@ -254,6 +282,103 @@ func (q *Queries) GetMovieGenre(ctx context.Context, arg GetMovieGenreParams) (M
 	return i, err
 }
 
+const getMovieInternal = `-- name: GetMovieInternal :one
+SELECT movie_id, public_id, imdb_id, title, poster_path, youtube_id, admin_review, ranking_value, ranking_name FROM movies
+WHERE public_id = ?
+`
+
+func (q *Queries) GetMovieInternal(ctx context.Context, publicID []byte) (Movie, error) {
+	row := q.db.QueryRowContext(ctx, getMovieInternal, publicID)
+	var i Movie
+	err := row.Scan(
+		&i.MovieID,
+		&i.PublicID,
+		&i.ImdbID,
+		&i.Title,
+		&i.PosterPath,
+		&i.YoutubeID,
+		&i.AdminReview,
+		&i.RankingValue,
+		&i.RankingName,
+	)
+	return i, err
+}
+
+const getMovieReviews = `-- name: GetMovieReviews :many
+SELECT id, movie_id, review, created_at, updated_at FROM movie_reviews
+WHERE movie_id = ?
+ORDER BY updated_at
+`
+
+func (q *Queries) GetMovieReviews(ctx context.Context, movieID int64) ([]MovieReview, error) {
+	rows, err := q.db.QueryContext(ctx, getMovieReviews, movieID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MovieReview
+	for rows.Next() {
+		var i MovieReview
+		if err := rows.Scan(
+			&i.ID,
+			&i.MovieID,
+			&i.Review,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRanking = `-- name: GetRanking :one
+SELECT id, ranking_name, ranking_value FROM rankings
+WHERE ranking_name = ?
+`
+
+func (q *Queries) GetRanking(ctx context.Context, rankingName string) (Ranking, error) {
+	row := q.db.QueryRowContext(ctx, getRanking, rankingName)
+	var i Ranking
+	err := row.Scan(&i.ID, &i.RankingName, &i.RankingValue)
+	return i, err
+}
+
+const getRankings = `-- name: GetRankings :many
+SELECT id, ranking_name, ranking_value FROM rankings
+ORDER BY ranking_value
+`
+
+func (q *Queries) GetRankings(ctx context.Context) ([]Ranking, error) {
+	rows, err := q.db.QueryContext(ctx, getRankings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Ranking
+	for rows.Next() {
+		var i Ranking
+		if err := rows.Scan(&i.ID, &i.RankingName, &i.RankingValue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRefreshToken = `-- name: GetRefreshToken :one
 SELECT id, user_id, hashed_token, revoked FROM refresh_tokens
 WHERE user_id = ?
@@ -475,6 +600,23 @@ type UpdateGenreParams struct {
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, updateGenre, arg.GenreName, arg.GenreID)
+}
+
+const updateMovieRankings = `-- name: UpdateMovieRankings :execresult
+UPDATE movies
+SET ranking_name = ?,
+    ranking_value = ?
+WHERE public_id = ?
+`
+
+type UpdateMovieRankingsParams struct {
+	RankingName  sql.NullString `json:"ranking_name"`
+	RankingValue sql.NullInt32  `json:"ranking_value"`
+	PublicID     []byte         `json:"public_id"`
+}
+
+func (q *Queries) UpdateMovieRankings(ctx context.Context, arg UpdateMovieRankingsParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateMovieRankings, arg.RankingName, arg.RankingValue, arg.PublicID)
 }
 
 const updateRefreshToken = `-- name: UpdateRefreshToken :execresult

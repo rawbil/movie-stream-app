@@ -22,6 +22,8 @@ var (
 	IncorrectPassword = errors.New("incorrect password")
 	TokenRevoked = errors.New("token revoked. Login again")
 	InvalidToken = errors.New("invalid token. Login again")
+	InvalidAPiKey = errors.New("invalid groq api key")
+	GroqApiLimit = errors.New("rate limited. retrying...")
 )
 
 func ErrorResponse(c *gin.Context, status_code int, error_msg string, err error) {

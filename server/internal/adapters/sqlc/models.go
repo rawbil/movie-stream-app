@@ -31,6 +31,20 @@ type MovieGenre struct {
 	GenreID int64 `json:"genre_id"`
 }
 
+type MovieReview struct {
+	ID        int64     `json:"id"`
+	MovieID   int64     `json:"movie_id"`
+	Review    string    `json:"review"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Ranking struct {
+	ID           int32  `json:"id"`
+	RankingName  string `json:"ranking_name"`
+	RankingValue int32  `json:"ranking_value"`
+}
+
 type RefreshToken struct {
 	ID          int64  `json:"id"`
 	UserID      int64  `json:"user_id"`

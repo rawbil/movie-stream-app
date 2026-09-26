@@ -42,3 +42,16 @@ type LoginParams struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 }
+
+type AddReviewParams struct {
+	Review string `json:"review" validate:"required"`
+}
+
+type RankingParams struct {
+	RankingName  string `json:"ranking_name" validate:"required"`
+	RankingValue int32 `json:"ranking_value" validate:"required"`
+}
+
+type AddRankingsParams struct {
+	Rankings []RankingParams `json:"rankings" validate:"required,min=1,dive"`
+}

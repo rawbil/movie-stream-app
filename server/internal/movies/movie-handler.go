@@ -1,6 +1,7 @@
 package movies
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -179,5 +180,69 @@ func (h *Handler) CreateMovie(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Movie '%s' created", params.Title),
+	})
+}
+
+// ! Add Rankings
+func (h *Handler) AddRankings(c *gin.Context) {
+	var params utils.AddRankingsParams
+
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
+		return
+	}
+
+	if err, ranking_name := h.Service.AddRankings(c.Request.Context(), params); err != nil {
+		if err == utils.AllFieldsRequiredError {
+			utils.ErrorResponse(c, http.StatusBadRequest, "missing value", err)
+			return
+		}
+
+		if err == utils.GenreMissing {
+			utils.ErrorResponse(c, http.StatusBadRequest, "at least one ranking needed", err)
+			return
+		}
+
+		if err == utils.MovieExistsError {
+			utils.ErrorResponse(c, http.StatusConflict, fmt.Sprintf("ranking '%s' already exists", ranking_name), err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "rankings added",
+	})
+}
+
+// ! AddMovieReview
+func (h *Handler) AddMovieReview(c *gin.Context) {
+	var params utils.AddReviewParams
+
+	public_id_from_url := c.Params.ByName("public_id")
+	if public_id_from_url == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "public_id not found in params", errors.New("public_id not found in params"))
+		return
+	}
+
+	publicID, err := uuid.Parse(public_id_from_url)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid public_id", err)
+		return
+	}
+
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
+		return
+	}
+
+	if err := h.Service.AddReview(c.Request.Context(), publicID, params); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
 	})
 }

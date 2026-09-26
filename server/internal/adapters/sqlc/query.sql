@@ -80,6 +80,10 @@ GROUP BY
   m.ranking_value,
   m.ranking_name;
 
+-- name: GetMovieInternal :one
+SELECT * FROM movies
+WHERE public_id = ?;
+
 -- name: CreateMovie :execresult
 INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)
 VALUES(?, ?, ?, ?, ?);
@@ -150,3 +154,30 @@ WHERE email = ?;
 -- name: GetUserByID :one
 SELECT * FROM users
 WHERE user_id = ?;
+
+-- name: UpdateMovieRankings :execresult
+UPDATE movies
+SET ranking_name = ?,
+    ranking_value = ?
+WHERE public_id = ?;
+
+-- name: AddRanking :execresult
+INSERT IGNORE INTO rankings(ranking_name, ranking_value)
+VALUES (?, ?);
+
+-- name: GetRanking :one
+SELECT * FROM rankings
+WHERE ranking_name = ?;
+
+-- name: GetRankings :many
+SELECT * FROM rankings
+ORDER BY ranking_value;
+
+-- name: AddMovieReview :execresult
+INSERT INTO movie_reviews(movie_id, review)
+values(?, ?);
+
+-- name: GetMovieReviews :many
+SELECT * FROM movie_reviews
+WHERE movie_id = ?
+ORDER BY updated_at;
