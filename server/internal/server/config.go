@@ -62,13 +62,13 @@ func (api *Api) Mount() http.Handler {
 
 	//! /api/v1/movies/genres
 	movie_genres.POST("/add", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddGenre), movieHandler.CreateGenre)
-	movie_genres.PATCH("/update", authutils.AuthMiddleware(*repo),middlewares.RoleMiddleware(*repo, authorization.PermissionUpdateGenre), movieHandler.UpdateGenre)
+	movie_genres.PATCH("/update", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionUpdateGenre), movieHandler.UpdateGenre)
 	movie_genres.GET("/list", movieHandler.ListGenres)
 
 	//! /api/v1/movies
 	movies.GET("/all", movieHandler.ListMovies)
 	movies.POST("/add-rankings", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddRankings), movieHandler.AddRankings)
-	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddReview),movieHandler.AddMovieReview)
+	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddReview), movieHandler.AddMovieReview)
 	movies.GET("/recommended", authutils.AuthMiddleware(*repo), movieHandler.GetMovieRecommendations)
 
 	//! /api/v1/movies
