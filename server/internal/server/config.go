@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/auth"
@@ -28,6 +29,15 @@ type DBConfig struct {
 
 func (api *Api) Mount() http.Handler {
 	r := gin.Default()
+
+	// configure CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{utils.ServerConfigFunc().ClientUrl},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	repo := repository.New(api.DB)
 	movieService := movies.NewService(*repo, api.DB)
