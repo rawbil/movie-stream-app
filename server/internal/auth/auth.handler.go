@@ -77,12 +77,22 @@ func (h *Handler) LoginUser(c *gin.Context) {
 	user, access_token, refresh_token, err := h.Service.LoginUser(c.Request.Context(), params)
 	if err != nil {
 
-		if err == utils.AllFieldsRequiredError || err == utils.InvalidEmailFormat {
+		if err == utils.InvalidEmailFormat {
 			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
 			return
 		}
 
-		if err == utils.NoRecordError || err == utils.IncorrectPassword {
+		if err == utils.AllFieldsRequiredError {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
+			return
+		}
+
+		if err == utils.IncorrectPassword {
+			utils.ErrorResponse(c, http.StatusBadRequest, "invalid credentials... try again", err)
+			return
+		}
+
+		if err == utils.NoRecordError {
 			utils.ErrorResponse(c, http.StatusBadRequest, "invalid credentials... try again", err)
 			return
 		}
@@ -178,6 +188,23 @@ func (h *Handler) Logout(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
+
+	isProd := utils.ServerConfigFunc().AppEnv != "dev"
+	cookieName := "__refresh_token"
+	if isProd {
+		cookieName = "__Host-refresh_token" //__HOST makes the cookie secure and ensures it is only transmitted via https
+	}
+
+	// Clear cookie
+	c.SetCookie(
+		cookieName,
+		"",
+		-1,
+		"/",
+		"",
+		isProd,
+		true,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",

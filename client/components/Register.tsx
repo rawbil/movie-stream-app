@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { GetMovieGenres } from "./queries/movie.queries";
 import { ScrollArea } from "./ui/scroll-area";
+import toast from "react-hot-toast";
 
 type Values = {
   username: string;
@@ -56,7 +57,8 @@ export default function Register() {
   const registerMutation = useMutation({
     mutationFn: RegisterUser,
     onSuccess: (data) => {
-      console.log(data);
+      setErrorMsg("")
+      toast.success(data.message)
     },
     onError: (error: any) => {
       setErrorMsg(
@@ -118,7 +120,7 @@ export default function Register() {
 
   return (
     <section className="flex h-screen items-center justify-center">
-      <Card className="w-[600px] max-w-full mx-auto">
+      <Card className="w-150 max-w-full mx-auto">
         <CardTitle className="flex flex-col items-center">
           {errorMsg && (
             <p className="bg-red-500 p-2 rounded">
@@ -128,13 +130,11 @@ export default function Register() {
           )}
           <h2 className="font-semibold text-xl">Create Account</h2>
 
-          <div className="place-items-center">
-            <div className="text-center">
-              <span className="opacity-80">Already have an account?</span>{" "}
-              <a href="/auth/login" className="underline hover:no-underline">
-                Login
-              </a>
-            </div>
+          <div className="text-center">
+            <span className="opacity-80">Already have an account?</span>{" "}
+            <a href="/auth/login" className="underline hover:no-underline">
+              Login
+            </a>
           </div>
         </CardTitle>
         <CardContent>

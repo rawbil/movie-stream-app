@@ -10,6 +10,11 @@ export type RegisterParams = {
   fav_genres: string[];
 };
 
+export type LoginParams = {
+  email: string;
+  password: string;
+};
+
 export const RegisterSchema = yup.object().shape({
   username: yup
     .string()
@@ -37,4 +42,22 @@ export const RegisterSchema = yup.object().shape({
     .string()
     .required("confirm_password field is required")
     .oneOf([yup.ref("password")], "passwords do not match"),
+});
+
+export const LoginSchema = yup.object().shape({
+  email: yup
+    .string()
+    .required("email field required")
+    .matches(emailRegex, "invalid email format")
+    .trim()
+    .lowercase(),
+
+  password: yup
+    .string()
+    .required("password field required")
+    .trim()
+    .matches(
+      passwordRegex,
+      "password should be at between 6-20 characters long, have at least alphanumerical and have at least one special character",
+    ),
 });
