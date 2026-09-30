@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
@@ -220,14 +221,19 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 	}
 
 	rt_cookie, err := c.Request.Cookie(cookieName)
+
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "refresh token missing", err)
 		return
 	}
 
-	rt := rt_cookie.Value
+	rt, err := url.QueryUnescape(rt_cookie.Value)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid refresh token", err)
+		return
+	}
 
-	access_token, refresh_token, err := h.Service.RefreshTokens(c.Request.Context(), rt)
+	access_token, refresh_token, user, err := h.Service.RefreshTokens(c.Request.Context(), rt)
 	if err != nil {
 		if err == utils.AllFieldsRequiredError {
 			utils.ErrorResponse(c, http.StatusBadRequest, "refresh token missing", err)
@@ -239,8 +245,18 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 			return
 		}
 
-		if err == utils.TokenRevoked || err == utils.InvalidToken {
+		if err == utils.TokenRevoked {
 			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), err)
+			return
+		}
+
+		if err == utils.InvalidToken {
+			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), err)
+			return
+		}
+
+		if err == utils.GenreMissing {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "decoded user not found", err)
 			return
 		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
@@ -250,17 +266,26 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 	maxAge := 7 * 24 * 60 * 60
 
 	c.SetCookie(
-		"__Host-refresh_token", // Cookie Name (Consider changing to "__Host-refresh_token" for maximum security)
-		refresh_token,          // Value
-		maxAge,                 // MaxAge in seconds (Fixed)
-		"/",                    // Path
-		"",                     // Domain (Leaving this empty is usually best)
-		isProd,                 // Secure (true means HTTPS only)
-		true,                   // HttpOnly (Prevents XSS access)
+		cookieName,    // Cookie Name
+		refresh_token, // Value
+		maxAge,        // MaxAge in seconds (Fixed)
+		"/",           // Path
+		"",            // Domain (Leaving this empty is usually best)
+		isProd,        // Secure (true means HTTPS only)
+		true,          // HttpOnly (Prevents XSS access)
 	)
+
+	updated_user := map[string]any{
+		"public_id":  user.PublicID,
+		"username":   user.Username,
+		"email":      user.Email,
+		"created_at": user.CreatedAt,
+		"updated_at": user.UpdatedAt,
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "success",
 		"access_token": access_token,
+		"user":         updated_user,
 	})
 }

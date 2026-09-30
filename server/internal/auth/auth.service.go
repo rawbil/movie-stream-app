@@ -18,7 +18,7 @@ type Service interface {
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
 	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error)
 	Logout(ctx context.Context, user_id int64) error
-	RefreshTokens(ctx context.Context, rt string) (string, string, error)
+	RefreshTokens(ctx context.Context, rt string) (string, string, repository.User, error)
 }
 
 type Svc struct {
@@ -294,44 +294,53 @@ func (svc *Svc) Logout(ctx context.Context, user_id int64) error {
 }
 
 // ! Refresh Tokens
-func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, error) {
+func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, repository.User, error) {
 	if rt == "" {
-		return "", "", utils.AllFieldsRequiredError
+		return "", "", repository.User{}, utils.AllFieldsRequiredError
 	}
 
 	//~ Validate refresh token
 	claims, err := authutils.ValidateRefreshToken(rt)
 	if err != nil {
-		return "", "", err
+		return "", "", repository.User{}, err
 	}
 
 	user_id := claims.UserID
+
+	//~ Get user
+	user, err := svc.repository.GetUserByID(ctx, user_id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", repository.User{}, utils.GenreMissing
+		}
+		return "", "", repository.User{}, err
+	}
 
 	//~ Get stored refresh token
 	hashed_rt, err := svc.repository.GetRefreshToken(ctx, user_id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", "", utils.NoRecordError
+			return "", "", repository.User{}, utils.NoRecordError
 		}
-		return "", "", err
+		return "", "", repository.User{}, err
 	}
 
 	//~ Ensure token is not revoked
 	if hashed_rt.Revoked {
-		return "", "", utils.TokenRevoked
+		return "", "", repository.User{}, utils.TokenRevoked
 	}
 
 	//~ Compare tokens
 	hashed_token := authutils.RefreshTokenHash(rt)
 	if subtle.ConstantTimeCompare([]byte(hashed_rt.HashedToken), []byte(hashed_token)) != 1 {
-		return "", "", utils.InvalidToken
+		return "", "", repository.User{}, utils.InvalidToken
 	}
 
 	//~ Generate new tokens
 	secret := utils.ServerConfigFunc().JwtSecret
 	access_token, refresh_token, _, _, err := authutils.GenerateAuthToken(user_id, secret)
 	if err != nil {
-		return "", "", err
+		return "", "", repository.User{}, err
 	}
 
 	new_hash := authutils.RefreshTokenHash(refresh_token)
@@ -342,8 +351,8 @@ func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, e
 		UserID:      user_id,
 		Revoked:     false,
 	}); err != nil {
-		return "", "", err
+		return "", "", repository.User{}, err
 	}
 
-	return access_token, refresh_token, nil
+	return access_token, refresh_token, user, nil
 }
