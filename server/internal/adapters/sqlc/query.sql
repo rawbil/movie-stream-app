@@ -54,6 +54,9 @@ LIMIT ?
 OFFSET ?
 ;
 
+-- name: GetMovieCount :one
+SELECT COUNT(*) FROM movies;
+
 -- name: GetMovie :one
 SELECT 
 BIN_TO_UUID(m.public_id) AS public_id, 

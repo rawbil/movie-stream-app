@@ -3,6 +3,7 @@ package movies
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -117,14 +118,14 @@ func (h *Handler) ListGenres(c *gin.Context) {
 
 // ! List Movies
 func (h *Handler) ListMovies(c *gin.Context) {
-	limitString := c.DefaultQuery("limit", "10")
+	// limitString := c.DefaultQuery("limit", "10")
 	pageString := c.DefaultQuery("page", "1")
 
-	limit, err := strconv.Atoi(limitString)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "limit must be a number", err)
-		return
-	}
+	// limit, err := strconv.Atoi(limitString)
+	// if err != nil {
+	// 	utils.ErrorResponse(c, http.StatusBadRequest, "limit must be a number", err)
+	// 	return
+	// }
 
 	page, err := strconv.Atoi(pageString)
 	if err != nil {
@@ -132,18 +133,19 @@ func (h *Handler) ListMovies(c *gin.Context) {
 		return
 	}
 
-	if limit < 1 {
-		utils.ErrorResponse(c, http.StatusBadRequest, "limit must be greater than zero", errors.New("invalid limit"))
-		return
-	}
+	// if limit < 1 {
+	// 	utils.ErrorResponse(c, http.StatusBadRequest, "limit must be greater than zero", errors.New("invalid limit"))
+	// 	return
+	// }
 	if page < 1 {
 		utils.ErrorResponse(c, http.StatusBadRequest, "page must be greater than zero", errors.New("invalid page"))
 		return
 	}
+	limit := 10
 
 	offset := (page - 1) * limit
 
-	movies, err := h.Service.ListMovies(c.Request.Context(), repository.ListMoviesParams{
+	movies, total_movies, err := h.Service.ListMovies(c.Request.Context(), repository.ListMoviesParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
@@ -153,13 +155,16 @@ func (h *Handler) ListMovies(c *gin.Context) {
 		return
 	}
 
+	total_pages := math.Ceil(float64(total_movies) / float64(limit))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "success",
 		"data": gin.H{
 			"movies": movies,
 			"page":   page,
-			"limit":  limit,
-			"skip":   offset,
+			// "limit":        limit,
+			"skip":         offset,
+			"total_pages": total_pages,
 		},
 	})
 }

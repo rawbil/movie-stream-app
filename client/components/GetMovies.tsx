@@ -5,16 +5,29 @@ import { GetMovies } from "./queries/movie.queries";
 import ServerLoading from "./Loaders/ServerLoading";
 import { Movie as MovieType } from "@/lib/types";
 import Movie from "./Movie";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "./ui/button";
 
 export default function GetAllMovies() {
+  const [page, setPage] = useState(1);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const pageParam = Number(searchParams.get("page") || 1);
+
   const {
     data: moviesData,
     error: moviesError,
     isFetching: moviesFetching,
   } = useQuery({
-    queryFn: GetMovies,
-    queryKey: ["all-movies"],
+    queryFn: () => GetMovies(page),
+    queryKey: ["all-movies", page],
   });
+
+  useEffect(() => {
+    setPage(pageParam);
+  }, [pageParam]);
 
   if (moviesFetching) return <ServerLoading />;
 
@@ -29,6 +42,14 @@ export default function GetAllMovies() {
   }
 
   const movies: MovieType[] = moviesData?.data?.movies ?? [];
+  const totalPages = moviesData?.data?.total_pages;
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const params = new URLSearchParams()
+    params.set("page", String(newPage))
+    router.push(`?${params.toString()}`);
+  };
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
@@ -61,6 +82,27 @@ export default function GetAllMovies() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-between items-center mt-10 border-t pt-5">
+        <Button
+          onClick={() => handlePageChange(Math.max(1, page - 1))}
+          disabled={page === 1}
+          className="disabled:bg-transparent disabled:text-white  disabled:cursor-not-allowed"
+        >
+          Prev
+        </Button>
+        <span className="opacity-70">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+          disabled={page === totalPages}
+          className="disabled:bg-transparent disabled:text-white disabled:cursor-not-allowed"
+        >
+          Next
+        </Button>
       </div>
     </main>
   );

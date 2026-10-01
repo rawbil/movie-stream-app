@@ -288,6 +288,17 @@ func (q *Queries) GetMovie(ctx context.Context, publicID []byte) (GetMovieRow, e
 	return i, err
 }
 
+const getMovieCount = `-- name: GetMovieCount :one
+SELECT COUNT(*) FROM movies
+`
+
+func (q *Queries) GetMovieCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getMovieCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getMovieGenre = `-- name: GetMovieGenre :one
 SELECT movie_id, genre_id FROM movie_genres
 WHERE movie_id = ? AND genre_id = ?

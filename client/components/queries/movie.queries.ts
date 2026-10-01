@@ -12,9 +12,9 @@ export async function GetMovieGenres() {
   }
 }
 
-export async function GetMovies() {
+export async function GetMovies(page: number) {
   try {
-    const response = await Axios.get("/movies/all");
+    const response = await Axios.get(`/movies/all?page=${page}`);
     return response.data;
   } catch (error: any) {
     if (error.response) {
