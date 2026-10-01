@@ -26,3 +26,16 @@ export async function LoginUser(data: LoginParams) {
     throw error;
   }
 }
+
+//! Logout User
+export async function LogoutUser() {
+  try {
+    const response = await Axios.post("/auth/logout", {});
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw error.response;
+    }
+    throw error;
+  }
+}

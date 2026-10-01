@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/Providers/ThemeProvider";
 import TanstackProvider from "@/components/Providers/TanstackProvider";
 import { Toaster } from "react-hot-toast";
 import AuthProvider from "@/components/Providers/AuthProvider";
+import Navbar from "@/components/Navbar";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -35,7 +36,10 @@ export default function RootLayout({
           >
             <Toaster />
             <AuthProvider>
-              <main>{children}</main>
+              <>
+                <Navbar />
+                <main>{children}</main>
+              </>
             </AuthProvider>
           </ThemeProvider>
         </TanstackProvider>
