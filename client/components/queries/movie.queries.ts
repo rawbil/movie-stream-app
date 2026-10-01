@@ -11,3 +11,15 @@ export async function GetMovieGenres() {
     throw error;
   }
 }
+
+export async function GetMovies() {
+  try {
+    const response = await Axios.get("/movies/all");
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw error.response;
+    }
+    throw error;
+  }
+}
