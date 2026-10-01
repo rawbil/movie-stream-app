@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
+	repository "github.com/rawbil/movie-stream-app/internal/adapters/sqlc"
 	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
@@ -115,7 +117,36 @@ func (h *Handler) ListGenres(c *gin.Context) {
 
 // ! List Movies
 func (h *Handler) ListMovies(c *gin.Context) {
-	movies, err := h.Service.ListMovies(c.Request.Context())
+	limitString := c.DefaultQuery("limit", "10")
+	pageString := c.DefaultQuery("page", "1")
+
+	limit, err := strconv.Atoi(limitString)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "limit must be a number", err)
+		return
+	}
+
+	page, err := strconv.Atoi(pageString)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "page must be a number", err)
+		return
+	}
+
+	if limit < 1 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "limit must be greater than zero", errors.New("invalid limit"))
+		return
+	}
+	if page < 1 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "page must be greater than zero", errors.New("invalid page"))
+		return
+	}
+
+	offset := (page - 1) * limit
+
+	movies, err := h.Service.ListMovies(c.Request.Context(), repository.ListMoviesParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
 
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
@@ -126,6 +157,9 @@ func (h *Handler) ListMovies(c *gin.Context) {
 		"message": "success",
 		"data": gin.H{
 			"movies": movies,
+			"page":   page,
+			"limit":  limit,
+			"skip":   offset,
 		},
 	})
 }

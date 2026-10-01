@@ -18,7 +18,7 @@ type Service interface {
 	CreateGenre(ctx context.Context, genreName string) (string, error)
 	UpdateGenre(ctx context.Context, arg utils.UpdateGenreParams) (string, error)
 	ListGenres(ctx context.Context) ([]repository.Genre, error)
-	ListMovies(ctx context.Context) ([]repository.ListMoviesRow, error)
+	ListMovies(ctx context.Context, arg repository.ListMoviesParams) ([]repository.ListMoviesRow, error)
 	GetMovie(ctx context.Context, publicID uuid.UUID) (repository.GetMovieRow, error)
 	CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error
 	AddRankings(ctx context.Context, arg utils.AddRankingsParams) (error, string)
@@ -115,8 +115,8 @@ func (svc *Svc) ListGenres(ctx context.Context) ([]repository.Genre, error) {
 }
 
 // ! List All Movies
-func (svc *Svc) ListMovies(ctx context.Context) ([]repository.ListMoviesRow, error) {
-	return svc.repository.ListMovies(ctx)
+func (svc *Svc) ListMovies(ctx context.Context, arg repository.ListMoviesParams) ([]repository.ListMoviesRow, error) {
+	return svc.repository.ListMovies(ctx, arg)
 }
 
 // ! Get Movie

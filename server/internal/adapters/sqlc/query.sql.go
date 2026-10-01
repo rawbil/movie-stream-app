@@ -673,8 +673,15 @@ GROUP BY
     m.admin_review,
     m.ranking_value, 
     m.ranking_name
-ORDER BY m.ranking_value
+ORDER BY m.ranking_value, m.movie_id
+LIMIT ?
+OFFSET ?
 `
+
+type ListMoviesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
 
 type ListMoviesRow struct {
 	PublicID     string         `json:"public_id"`
@@ -688,8 +695,8 @@ type ListMoviesRow struct {
 	Genres       sql.NullString `json:"genres"`
 }
 
-func (q *Queries) ListMovies(ctx context.Context) ([]ListMoviesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMovies)
+func (q *Queries) ListMovies(ctx context.Context, arg ListMoviesParams) ([]ListMoviesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMovies, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

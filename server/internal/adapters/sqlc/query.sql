@@ -49,7 +49,9 @@ GROUP BY
     m.admin_review,
     m.ranking_value, 
     m.ranking_name
-ORDER BY m.ranking_value
+ORDER BY m.ranking_value, m.movie_id
+LIMIT ?
+OFFSET ?
 ;
 
 -- name: GetMovie :one
