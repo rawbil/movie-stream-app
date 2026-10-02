@@ -68,26 +68,45 @@ export default function Movie({ movie }: MovieProps) {
 
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/60 pt-3">
             <span className="truncate text-xs text-muted-foreground">
-              <Button onClick={() => router.push(`reviews/${movie.public_id}?poster_path=${movie.poster_path}&title=${movie.title}`)}>
+              <Button
+                onClick={() =>
+                  router.push(
+                    `reviews/${movie.public_id}?poster_path=${movie.poster_path}&title=${movie.title}`,
+                  )
+                }
+              >
                 Reviews
               </Button>
             </span>
 
             {hasTrailer && (
-              <a
-                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary underline-offset-4 transition hover:underline"
-                href={
-                  isAuthenticated
-                    ? `https://www.youtube.com/watch?v=${movie.youtube_id.String}`
-                    : "/auth/login"
+              // <a
+              //   className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary underline-offset-4 transition hover:underline"
+              //   href={
+              //     isAuthenticated
+              //       ? `https://www.youtube.com/watch?v=${movie.youtube_id.String}`
+              //       : "/auth/login"
+              //   }
+              //   target={isAuthenticated ? "_blank" : undefined}
+              //   rel={isAuthenticated ? "noopener noreferrer" : undefined}
+              //   aria-label={`Watch trailer for ${movie.title}`}
+              // >
+              //   <Play aria-hidden="true" className="size-3.5 fill-current" />
+              //   Trailer
+              // </a>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  router.push(
+                    isAuthenticated
+                      ? `/stream/${encodeURIComponent(movie.youtube_id.String)}`
+                      : "/auth/login",
+                  )
                 }
-                target={isAuthenticated ? "_blank" : undefined}
-                rel={isAuthenticated ? "noopener noreferrer" : undefined}
-                aria-label={`Watch trailer for ${movie.title}`}
               >
+                <span>Trailer</span>
                 <Play aria-hidden="true" className="size-3.5 fill-current" />
-                Trailer
-              </a>
+              </Button>
             )}
           </div>
         </div>
