@@ -179,13 +179,30 @@ SELECT * FROM rankings
 ORDER BY ranking_value;
 
 -- name: AddMovieReview :execresult
-INSERT INTO movie_reviews(movie_id, review)
-values(?, ?);
+INSERT INTO movie_reviews(user_id, movie_id, review)
+values(?, ?, ?);
 
--- name: GetMovieReviews :many
+-- name: GetMovieReviewsInternal :many
 SELECT * FROM movie_reviews
 WHERE movie_id = ?
 ORDER BY updated_at;
+
+-- name: GetMovieReviews :many
+SELECT mr.review, mr.created_at, u.username, BIN_TO_UUID(m.public_id) as movie_public_id FROM movie_reviews mr
+JOIN users u
+ON mr.user_id = u.user_id
+JOIN movies m
+ON m.movie_id = mr.movie_id
+WHERE m.public_id = ?
+ORDER BY mr.updated_at
+LIMIT ?
+OFFSET ?;
+
+-- name: GetMovieReviewCount :one
+SELECT COUNT(*) FROM movie_reviews mr
+JOIN movies m
+ON m.movie_id = mr.movie_id
+WHERE m.public_id = ?;
 
 -- name: GetRecommendedMovies :many
 SELECT 

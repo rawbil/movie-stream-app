@@ -35,3 +35,15 @@ export async function GetRecommendedMovies() {
     throw error;
   }
 }
+
+export async function GetMovieReviews(publicId: string, page: number) {
+  try {
+    const response = await Axios.get(`/movies/reviews/${publicId}?page=${page}`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw error.response;
+    }
+    throw error;
+  }
+}

@@ -22,8 +22,9 @@ type Service interface {
 	GetMovie(ctx context.Context, publicID uuid.UUID) (repository.GetMovieRow, error)
 	CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error
 	AddRankings(ctx context.Context, arg utils.AddRankingsParams) (error, string)
-	AddReview(ctx context.Context, publicID uuid.UUID, arg utils.AddReviewParams) error
+	AddReview(ctx context.Context, publicID uuid.UUID, user_id int64, arg utils.AddReviewParams) error
 	GetMovieRecommendations(ctx context.Context, userID int64) ([]repository.GetRecommendedMoviesRow, error)
+	GetMovieReviews(ctx context.Context, arg repository.GetMovieReviewsParams) ([]repository.GetMovieReviewsRow, int64, error)
 }
 
 type Svc struct {
@@ -294,7 +295,7 @@ func (svc *Svc) AddRankings(ctx context.Context, arg utils.AddRankingsParams) (e
 
 // ! Add Review
 // Add a review, and run all the reviews through AI and return the final ranking
-func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, arg utils.AddReviewParams) error {
+func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, user_id int64, arg utils.AddReviewParams) error {
 	//~ Validate field
 	if err := utils.ValidateAddReview(arg); err != nil {
 		if utils.ValidationErrors("required", err) {
@@ -339,6 +340,7 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, arg utils.Add
 
 	//~ Add review
 	if _, err := qtx.AddMovieReview(ctx, repository.AddMovieReviewParams{
+		UserID:  user_id,
 		MovieID: movie.MovieID,
 		Review:  arg.Review,
 	}); err != nil {
@@ -346,7 +348,7 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, arg utils.Add
 	}
 
 	//~ Get Reviews
-	reviews, err := qtx.GetMovieReviews(ctx, movie.MovieID)
+	reviews, err := qtx.GetMovieReviewsInternal(ctx, movie.MovieID)
 	if err != nil {
 		return err
 	}
@@ -432,4 +434,19 @@ func (svc *Svc) GetMovieRecommendations(ctx context.Context, userID int64) ([]re
 
 	return movies, nil
 
+}
+
+// ! Get Movie Reviews
+func (svc *Svc) GetMovieReviews(ctx context.Context, arg repository.GetMovieReviewsParams) ([]repository.GetMovieReviewsRow, int64, error) {
+	totalReviews, err := svc.repository.GetMovieReviewCount(ctx, arg.PublicID)
+	if err != nil {
+		return []repository.GetMovieReviewsRow{}, 0, err
+	}
+
+	reviews, err := svc.repository.GetMovieReviews(ctx, arg)
+	if err != nil {
+		return []repository.GetMovieReviewsRow{}, 0, err
+	}
+
+	return reviews, totalReviews, nil
 }

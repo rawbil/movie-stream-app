@@ -8,20 +8,22 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const addMovieReview = `-- name: AddMovieReview :execresult
-INSERT INTO movie_reviews(movie_id, review)
-values(?, ?)
+INSERT INTO movie_reviews(user_id, movie_id, review)
+values(?, ?, ?)
 `
 
 type AddMovieReviewParams struct {
+	UserID  int64  `json:"user_id"`
 	MovieID int64  `json:"movie_id"`
 	Review  string `json:"review"`
 }
 
 func (q *Queries) AddMovieReview(ctx context.Context, arg AddMovieReviewParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, addMovieReview, arg.MovieID, arg.Review)
+	return q.db.ExecContext(ctx, addMovieReview, arg.UserID, arg.MovieID, arg.Review)
 }
 
 const addRanking = `-- name: AddRanking :execresult
@@ -339,13 +341,80 @@ func (q *Queries) GetMovieInternal(ctx context.Context, publicID []byte) (Movie,
 }
 
 const getMovieReviews = `-- name: GetMovieReviews :many
-SELECT id, movie_id, review, created_at, updated_at FROM movie_reviews
+SELECT mr.review, mr.created_at, u.username, BIN_TO_UUID(m.public_id) as movie_public_id FROM movie_reviews mr
+JOIN users u
+ON mr.user_id = u.user_id
+JOIN movies m
+ON m.movie_id = mr.movie_id
+WHERE m.public_id = ?
+ORDER BY mr.updated_at
+LIMIT ?
+OFFSET ?
+`
+
+const getMovieReviewCount = `-- name: GetMovieReviewCount :one
+SELECT COUNT(*) FROM movie_reviews mr
+JOIN movies m
+ON m.movie_id = mr.movie_id
+WHERE m.public_id = ?
+`
+
+func (q *Queries) GetMovieReviewCount(ctx context.Context, publicID []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getMovieReviewCount, publicID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+type GetMovieReviewsParams struct {
+	PublicID []byte `json:"public_id"`
+	Limit    int32  `json:"limit"`
+	Offset   int32  `json:"offset"`
+}
+
+type GetMovieReviewsRow struct {
+	Review        string    `json:"review"`
+	CreatedAt     time.Time `json:"created_at"`
+	Username      string    `json:"username"`
+	MoviePublicID string    `json:"movie_public_id"`
+}
+
+func (q *Queries) GetMovieReviews(ctx context.Context, arg GetMovieReviewsParams) ([]GetMovieReviewsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMovieReviews, arg.PublicID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMovieReviewsRow
+	for rows.Next() {
+		var i GetMovieReviewsRow
+		if err := rows.Scan(
+			&i.Review,
+			&i.CreatedAt,
+			&i.Username,
+			&i.MoviePublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMovieReviewsInternal = `-- name: GetMovieReviewsInternal :many
+SELECT id, movie_id, review, created_at, updated_at, user_id FROM movie_reviews
 WHERE movie_id = ?
 ORDER BY updated_at
 `
 
-func (q *Queries) GetMovieReviews(ctx context.Context, movieID int64) ([]MovieReview, error) {
-	rows, err := q.db.QueryContext(ctx, getMovieReviews, movieID)
+func (q *Queries) GetMovieReviewsInternal(ctx context.Context, movieID int64) ([]MovieReview, error) {
+	rows, err := q.db.QueryContext(ctx, getMovieReviewsInternal, movieID)
 	if err != nil {
 		return nil, err
 	}
@@ -359,6 +428,7 @@ func (q *Queries) GetMovieReviews(ctx context.Context, movieID int64) ([]MovieRe
 			&i.Review,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}

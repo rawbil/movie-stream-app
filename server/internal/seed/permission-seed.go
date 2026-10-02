@@ -16,6 +16,7 @@ func SeedPermissions(db *sql.DB) error {
 		authorization.PermissionAddRankings,
 		authorization.PermissionAddReview,
 		authorization.PermissionCreateMovie,
+		authorization.PermissionGetReviews,
 	}
 
 	for _, permission := range permissions {

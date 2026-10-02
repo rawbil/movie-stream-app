@@ -163,7 +163,7 @@ func (h *Handler) ListMovies(c *gin.Context) {
 			"movies": movies,
 			"page":   page,
 			// "limit":        limit,
-			"skip":         offset,
+			"skip":        offset,
 			"total_pages": total_pages,
 		},
 	})
@@ -272,12 +272,18 @@ func (h *Handler) AddMovieReview(c *gin.Context) {
 		return
 	}
 
+	user_id, err := authutils.GetUserIDFromContext(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, err.Error(), err)
+		return
+	}
+
 	if err := c.ShouldBindJSON(&params); err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
 		return
 	}
 
-	if err := h.Service.AddReview(c.Request.Context(), publicID, params); err != nil {
+	if err := h.Service.AddReview(c.Request.Context(), publicID, user_id, params); err != nil {
 		if err == utils.AllFieldsRequiredError {
 			utils.ErrorResponse(c, http.StatusBadRequest, "review field required", err)
 			return
@@ -319,4 +325,58 @@ func (h *Handler) GetMovieRecommendations(c *gin.Context) {
 		"movies": movies,
 	})
 
+}
+
+// ! Get Movie Reviews
+func (h *Handler) GetMovieReviews(c *gin.Context) {
+	public_id_from_url := c.Params.ByName("public_id")
+	if public_id_from_url == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "public_id not found in params", errors.New("public_id not found in params"))
+		return
+	}
+
+	publicID, err := uuid.Parse(public_id_from_url)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid public_id", err)
+		return
+	}
+
+	pageString := c.DefaultQuery("page", "1")
+
+	page, err := strconv.Atoi(pageString)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "page must be a number", err)
+		return
+	}
+
+	if page < 1 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "page must be greater than zero", errors.New("invalid page"))
+		return
+	}
+
+	limit := 10
+
+	offset := (page - 1) * limit
+
+	reviews, totalReviews, err := h.Service.GetMovieReviews(c.Request.Context(), repository.GetMovieReviewsParams{
+		PublicID: publicID[:],
+		Limit:    int32(limit),
+		Offset:   int32(offset),
+	})
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+
+	totalPages := math.Ceil(float64(totalReviews) / float64(limit))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"data": gin.H{
+			"reviews":       reviews,
+			"page":          page,
+			"total_pages":   totalPages,
+			"total_reviews": totalReviews,
+		},
+	})
 }

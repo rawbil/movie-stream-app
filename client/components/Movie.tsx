@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Play } from "lucide-react";
 import { useAuthStore } from "@/app/auth/(store)/auth.store";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 interface MovieProps {
   movie: MovieData;
@@ -13,6 +14,7 @@ interface MovieProps {
 
 export default function Movie({ movie }: MovieProps) {
   const accessToken = useAuthStore((state) => state.accessToken);
+  const router = useRouter();
 
   const isAuthenticated = !!accessToken;
 
@@ -66,7 +68,9 @@ export default function Movie({ movie }: MovieProps) {
 
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/60 pt-3">
             <span className="truncate text-xs text-muted-foreground">
-              <Button>Add Review</Button>
+              <Button onClick={() => router.push(`reviews/${movie.public_id}?poster_path=${movie.poster_path}&title=${movie.title}`)}>
+                Reviews
+              </Button>
             </span>
 
             {hasTrailer && (

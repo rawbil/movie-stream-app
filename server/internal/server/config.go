@@ -79,6 +79,7 @@ func (api *Api) Mount() http.Handler {
 	movies.GET("/all", movieHandler.ListMovies)
 	movies.POST("/add-rankings", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddRankings), movieHandler.AddRankings)
 	movies.POST("/add-review/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionAddReview), movieHandler.AddMovieReview)
+	movies.GET("/reviews/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionGetReviews), movieHandler.GetMovieReviews)
 	movies.GET("/recommended", authutils.AuthMiddleware(*repo), movieHandler.GetMovieRecommendations)
 
 	//! /api/v1/movies
