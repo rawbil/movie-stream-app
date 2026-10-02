@@ -5,6 +5,7 @@ import { Card } from "./ui/card";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { useAuthStore } from "@/app/auth/(store)/auth.store";
+import { Button } from "./ui/button";
 
 interface MovieProps {
   movie: MovieData;
@@ -65,13 +66,17 @@ export default function Movie({ movie }: MovieProps) {
 
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/60 pt-3">
             <span className="truncate text-xs text-muted-foreground">
-              {movie.ranking_value.Valid ? "" : "Not ranked"}
+              <Button>Add Review</Button>
             </span>
 
             {hasTrailer && (
               <a
                 className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary underline-offset-4 transition hover:underline"
-                href={isAuthenticated ? `https://www.youtube.com/watch?v=${movie.youtube_id.String}` : "/auth/login"}
+                href={
+                  isAuthenticated
+                    ? `https://www.youtube.com/watch?v=${movie.youtube_id.String}`
+                    : "/auth/login"
+                }
                 target={isAuthenticated ? "_blank" : undefined}
                 rel={isAuthenticated ? "noopener noreferrer" : undefined}
                 aria-label={`Watch trailer for ${movie.title}`}

@@ -13,11 +13,12 @@ import { Moon, Sun } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { LogoutUser } from "./mutations/auth.mutation";
 import { useAuthStore } from "@/app/auth/(store)/auth.store";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 export default function Navbar() {
   const { setTheme } = useTheme();
+  const pathname = usePathname()
 
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
   const router = useRouter();
@@ -45,11 +46,11 @@ export default function Navbar() {
         <h2>Movie Trailers</h2>
       </div>
       <ul className="flex items-center">
-        <li className="font-medium hover:underline px-3">
+        <li className={`font-medium hover:underline px-3 ${pathname.endsWith("/") && "underline"}`}>
           <Link href={"/"}>Home</Link>
         </li>
-        <li className="font-medium hover:underline px-3">
-          <Link href={"/recommendations"}>Recommendations</Link>
+        <li className={`font-medium hover:underline px-3 ${pathname.startsWith("/recommended") && "underline"}`}>
+          <Link href={"/recommended"}>Recommended Movies</Link>
         </li>
       </ul>
       <div>
