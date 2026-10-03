@@ -18,7 +18,8 @@ type ServerConfig struct {
 	JwtSecret  string
 	AppEnv     string
 	GroqApiKey string
-	ClientUrl string
+	ClientUrl              string
+	RefreshCookieSameSite string
 }
 
 func DBConfigFunc() *DBConfig {
@@ -37,7 +38,8 @@ func ServerConfigFunc() *ServerConfig {
 		JwtSecret:  GetEnv("JWT_SECRET", ""),
 		AppEnv:     GetEnv("APP_ENV", "dev"),
 		GroqApiKey: GetEnv("GROQ_API_KEY", ""),
-		ClientUrl: GetEnv("CLIENT_URL", "http://localhost:3000"),
+		ClientUrl:              GetEnv("CLIENT_URL", "http://localhost:3000"),
+		RefreshCookieSameSite: GetEnv("REFRESH_COOKIE_SAME_SITE", "lax"),
 	}
 }
 

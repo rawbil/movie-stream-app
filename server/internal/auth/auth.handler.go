@@ -3,6 +3,7 @@ package auth
 import (
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rawbil/movie-stream-app/internal/auth/authutils"
@@ -11,6 +12,58 @@ import (
 
 type Handler struct {
 	Service Service
+}
+
+const refreshTokenMaxAge = 7 * 24 * 60 * 60
+
+type refreshCookieSettings struct {
+	name     string
+	secure   bool
+	sameSite http.SameSite
+}
+
+func getRefreshCookieSettings() refreshCookieSettings {
+	config := utils.ServerConfigFunc()
+	isProduction := strings.EqualFold(config.AppEnv, "production") || strings.EqualFold(config.AppEnv, "prod")
+	sameSite := http.SameSiteLaxMode
+
+	switch strings.ToLower(config.RefreshCookieSameSite) {
+	case "strict":
+		sameSite = http.SameSiteStrictMode
+	case "none":
+		sameSite = http.SameSiteNoneMode
+	}
+
+	settings := refreshCookieSettings{
+		name:     "__refresh_token",
+		secure:   isProduction || sameSite == http.SameSiteNoneMode,
+		sameSite: sameSite,
+	}
+	if settings.secure {
+		settings.name = "__Host-refresh_token"
+	}
+
+	return settings
+}
+
+func setRefreshTokenCookie(c *gin.Context, token string, maxAge int) {
+	settings := getRefreshCookieSettings()
+	c.SetSameSite(settings.sameSite)
+	c.SetCookie(settings.name, token, maxAge, "/", "", settings.secure, true)
+}
+
+func clearRefreshTokenCookie(c *gin.Context) {
+	setRefreshTokenCookie(c, "", -1)
+}
+
+func isRefreshOriginAllowed(c *gin.Context) bool {
+	settings := getRefreshCookieSettings()
+	if settings.sameSite != http.SameSiteNoneMode {
+		return true
+	}
+
+	allowedOrigin := strings.TrimRight(utils.ServerConfigFunc().ClientUrl, "/")
+	return c.GetHeader("Origin") == allowedOrigin
 }
 
 func NewHandler(service Service) *Handler {
@@ -102,34 +155,7 @@ func (h *Handler) LoginUser(c *gin.Context) {
 		return
 	}
 
-	// rt_cookie := http.Cookie{
-	// 	Name:     "__refresh_token__",
-	// 	Value:    refresh_token,
-	// 	MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
-	// 	Path:     "/",
-	// 	HttpOnly: true,                                     // Prevents client-side JS access
-	// 	Secure:   utils.ServerConfigFunc().AppEnv != "dev", // true in prod (SET APP_ENV=prod)
-	// }
-
-	// http.SetCookie(w, &rt_cookie)
-	maxAge := 7 * 24 * 60 * 60
-
-	// Determine if we are in production
-	isProd := utils.ServerConfigFunc().AppEnv != "dev"
-	cookieName := "__refresh_token"
-	if isProd {
-		cookieName = "__Host-refresh_token" //__HOST makes the cookie secure and ensures it is only transmitted via https
-	}
-
-	c.SetCookie(
-		cookieName,    // Cookie Name
-		refresh_token, // Value
-		maxAge,        // MaxAge in seconds (Fixed)
-		"/",           // Path
-		"",            // Domain (Leaving this empty is usually best)
-		isProd,        // Secure (true means HTTPS only)
-		true,          // HttpOnly (Prevents XSS access)
-	)
+	setRefreshTokenCookie(c, refresh_token, refreshTokenMaxAge)
 
 	updated_user := map[string]any{
 		"public_id":  user.PublicID,
@@ -190,22 +216,7 @@ func (h *Handler) Logout(c *gin.Context) {
 		return
 	}
 
-	isProd := utils.ServerConfigFunc().AppEnv != "dev"
-	cookieName := "__refresh_token"
-	if isProd {
-		cookieName = "__Host-refresh_token" //__HOST makes the cookie secure and ensures it is only transmitted via https
-	}
-
-	// Clear cookie
-	c.SetCookie(
-		cookieName,
-		"",
-		-1,
-		"/",
-		"",
-		isProd,
-		true,
-	)
+	clearRefreshTokenCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
@@ -213,14 +224,13 @@ func (h *Handler) Logout(c *gin.Context) {
 }
 
 func (h *Handler) RefreshTokens(c *gin.Context) {
-	isProd := utils.ServerConfigFunc().AppEnv != "dev"
-
-	cookieName := "__refresh_token"
-	if isProd {
-		cookieName = "__Host-refresh_token"
+	if !isRefreshOriginAllowed(c) {
+		utils.ErrorResponse(c, http.StatusForbidden, "refresh origin is not allowed", nil)
+		return
 	}
 
-	rt_cookie, err := c.Request.Cookie(cookieName)
+	refreshCookie := getRefreshCookieSettings()
+	rt_cookie, err := c.Request.Cookie(refreshCookie.name)
 
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "refresh token missing", err)
@@ -259,21 +269,11 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "decoded user not found", err)
 			return
 		}
-		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		utils.ErrorResponse(c, http.StatusUnauthorized, "internal server error", err)
 		return
 	}
 
-	maxAge := 7 * 24 * 60 * 60
-
-	c.SetCookie(
-		cookieName,    // Cookie Name
-		refresh_token, // Value
-		maxAge,        // MaxAge in seconds (Fixed)
-		"/",           // Path
-		"",            // Domain (Leaving this empty is usually best)
-		isProd,        // Secure (true means HTTPS only)
-		true,          // HttpOnly (Prevents XSS access)
-	)
+	setRefreshTokenCookie(c, refresh_token, refreshTokenMaxAge)
 
 	updated_user := map[string]any{
 		"public_id":  user.PublicID,

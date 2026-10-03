@@ -15,6 +15,43 @@ export const AxiosClient = axios.create({
   withCredentials: true,
 });
 
+type RefreshResponse = {
+  access_token: string;
+  user: {
+    public_id: string;
+    email: string;
+    created_at: Date;
+    updated_at: Date;
+  };
+};
+
+let refreshAccessTokenPromise: Promise<string> | null = null;
+
+async function refreshAccessToken() {
+  if (!refreshAccessTokenPromise) {
+    refreshAccessTokenPromise = AxiosClient.post<RefreshResponse>(
+      "/auth/refresh_tokens",
+      {},
+    )
+      .then(({ data }) => {
+        useAuthStore.getState().setAccessToken(data.access_token);
+        useUserStore.getState().setUser({
+          public_id: data.user.public_id,
+          email: data.user.email,
+          created_at: data.user.created_at,
+          updated_at: data.user.updated_at,
+        });
+
+        return data.access_token;
+      })
+      .finally(() => {
+        refreshAccessTokenPromise = null;
+      });
+  }
+
+  return refreshAccessTokenPromise;
+}
+
 // Add Bearer token globally to all requests
 Axios.interceptors.request.use(
   (config) => {
@@ -35,6 +72,7 @@ Axios.interceptors.response.use(
     if (
       error.response &&
       error.response.status === 401 &&
+      originalRequest &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
@@ -44,26 +82,16 @@ Axios.interceptors.response.use(
           window.location.href = "/auth/login";
           return Promise.reject(error);
         }
-        const response = await AxiosClient.post(
-          "/auth/refresh_tokens",
-          {},
-          { withCredentials: true },
-        );
-        useAuthStore.getState().setAccessToken(response.data.access_token);
-        useUserStore.getState().setUser({
-          public_id: response.data.user.public_id,
-          email: response.data.user.email,
-          created_at: response.data.user.created_at,
-          updated_at: response.data.user.updated_at,
-        });
-        //console.log("New Access Token generated", response.data.access_token);
+        const accessToken = await refreshAccessToken();
 
         // Update the original request's Authorization header
+        originalRequest.headers = originalRequest.headers ?? {};
         originalRequest.headers["Authorization"] =
-          `Bearer ${response.data.access_token}`;
+          `Bearer ${accessToken}`;
 
         return Axios(originalRequest); //retry original request
       } catch (err) {
+        useAuthStore.getState().setAccessToken(null);
         if (
           window.location.pathname !== "/auth/login" &&
           window.location.pathname !== "/auth/register"
