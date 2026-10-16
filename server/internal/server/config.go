@@ -43,7 +43,7 @@ func (api *Api) Mount() http.Handler {
 	movieService := movies.NewService(*repo, api.DB)
 	movieHandler := movies.NewHandler(movieService)
 
-	authService := auth.NewService(*repo, api.DB)
+	authService := auth.NewService(repo, api.DB)
 	authHandler := auth.NewHandler(authService)
 
 	// groups

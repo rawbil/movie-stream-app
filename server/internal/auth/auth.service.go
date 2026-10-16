@@ -21,12 +21,28 @@ type Service interface {
 	RefreshTokens(ctx context.Context, rt string) (string, string, repository.User, error)
 }
 
+type Repository interface {
+	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
+	CreateUser(ctx context.Context, arg repository.CreateUserParams) (sql.Result, error)
+	GetRole(ctx context.Context, role string) (repository.Role, error)
+	CreateRole(ctx context.Context, role string) (sql.Result, error)
+	CreateUserRoles(ctx context.Context, arg repository.CreateUserRolesParams) (sql.Result, error)
+	GetGenre(ctx context.Context, genreName string) (repository.Genre, error)
+	CreateGenre(ctx context.Context, genreName string) (sql.Result, error)
+	CreateUserGenre(ctx context.Context, arg repository.CreateUserGenreParams) (sql.Result, error)
+	GetRefreshToken(ctx context.Context, userID int64) (repository.RefreshToken, error)
+	UpdateRefreshToken(ctx context.Context, arg repository.UpdateRefreshTokenParams) (sql.Result, error)
+	CreateRefreshToken(ctx context.Context, arg repository.CreateRefreshTokenParams) (sql.Result, error)
+	GetUserByID(ctx context.Context, userID int64) (repository.User, error)
+	RevokeRefreshToken(ctx context.Context, arg repository.RevokeRefreshTokenParams) (sql.Result, error)
+}
+
 type Svc struct {
-	repository repository.Queries
+	repository Repository
 	db         *sql.DB
 }
 
-func NewService(repository repository.Queries, db *sql.DB) Service {
+func NewService(repository Repository, db *sql.DB) Service {
 	return &Svc{
 		repository: repository,
 		db:         db,
@@ -95,7 +111,7 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) er
 
 	defer tx.Rollback()
 
-	qtx := svc.repository.WithTx(tx)
+	qtx := repository.New(tx)
 
 	//~ Save user
 	create_user_result, err := qtx.CreateUser(ctx, repository.CreateUserParams{
