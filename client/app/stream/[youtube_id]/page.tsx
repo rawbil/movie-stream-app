@@ -42,7 +42,9 @@ export default function StreamMoviePage() {
             {hasPlaybackError ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
                 <CircleAlert aria-hidden="true" className="size-7" />
-                <p className="text-sm">This trailer is unavailable for embedded playback.</p>
+                <p className="text-sm">
+                  This trailer is unavailable for embedded playback.
+                </p>
                 <a
                   className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
                   href={videoUrl}
