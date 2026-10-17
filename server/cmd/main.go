@@ -51,15 +51,18 @@ func main() {
 		utils.Log.Error("Error seeding permissions", "error", err)
 		return
 	}
+	
+	if err := seed.SeedRoles(db); err != nil {
+		utils.Log.Error("Error seeding roles", "error", err)
+		return
+	}
+	
 	if err := seed.SeedRolePermissions(context.Background(), *repository.New(db), db); err != nil {
 		utils.Log.Error("Error seeding role permissions", "error", err)
 		return
 	}
 
-	if err := seed.SeedRoles(db); err != nil {
-		utils.Log.Error("Error seeding roles", "error", err)
-		return
-	}
+	
 
 	if err := seed.SeedMovieRankings(db); err != nil {
 		utils.Log.Error("Error seeding rankings", "error", err)
