@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"log"
 	"os"
 
@@ -14,11 +17,36 @@ import (
 	"github.com/rawbil/movie-stream-app/internal/utils"
 )
 
+func registerRDSCert() error {
+	caCert, err := os.ReadFile("/etc/ssl/certs/rds-global-bundle.pem")
+	if err != nil {
+		return err
+	}
+
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil || rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
+		return fmt.Errorf("failed to append RDS CA certificates")
+	}
+
+	return mysql.RegisterTLSConfig("custom", &tls.Config{
+		RootCAs:    rootCAs,
+		MinVersion: tls.VersionTLS12,
+	})
+}
+
 func main() {
 
 	if err := godotenv.Load(); err != nil {
 		utils.Log.Error("ERROR LOADING ENV VARIABLES")
 		return
+	}
+
+	if err := registerRDSCert(); err != nil {
+		log.Fatal(err)
 	}
 
 	cfg := mysql.Config{
@@ -28,6 +56,7 @@ func main() {
 		DBName:               utils.DBConfigFunc().Name,
 		ParseTime:            utils.DBConfigFunc().ParseTime,
 		AllowNativePasswords: true,
+		TLSConfig: "custom",
 	}
 
 	dbConfig := &server.DBConfig{
@@ -51,18 +80,16 @@ func main() {
 		utils.Log.Error("Error seeding permissions", "error", err)
 		return
 	}
-	
+
 	if err := seed.SeedRoles(db); err != nil {
 		utils.Log.Error("Error seeding roles", "error", err)
 		return
 	}
-	
+
 	if err := seed.SeedRolePermissions(context.Background(), *repository.New(db), db); err != nil {
 		utils.Log.Error("Error seeding role permissions", "error", err)
 		return
 	}
-
-	
 
 	if err := seed.SeedMovieRankings(db); err != nil {
 		utils.Log.Error("Error seeding rankings", "error", err)
