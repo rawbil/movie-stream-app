@@ -28,6 +28,8 @@ type DBConfig struct {
 }
 
 func (api *Api) Mount() http.Handler {
+	gin.SetMode(gin.ReleaseMode)
+
 	r := gin.Default()
 
 	// configure CORS
