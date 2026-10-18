@@ -34,7 +34,11 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
            go build -o bin/server ./cmd/main.go
 
+      - name: Build Goose CLI
+        run: GOBIN="$PWD/bin" go install github.com/pressly/goose/v3/cmd/goose@latest
+
       - name: Configure SSH
+        if: github.event_name == 'push'
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
@@ -49,14 +53,18 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Upload executable to EC2
+        if: github.event_name == 'push'
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
         run: |
           scp bin/server \
             "$EC2_USER@$EC2_HOST:/opt/movie-trailer/movie-stream-app/server/bin/server.new"
+          scp bin/goose \
+            "$EC2_USER@$EC2_HOST:/opt/movie-trailer/movie-stream-app/server/bin/goose.new"
 
       - name: Replace executable and restart service
+        if: github.event_name == 'push'
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -64,16 +72,24 @@ jobs:
           ssh "$EC2_USER@$EC2_HOST" 'bash -s' <<'REMOTE'
             set -eu
 
-            cd /opt/movie-trailer/movie-stream-app/server/bin/
+            cd /opt/movie-trailer/movie-stream-app
+            git pull --ff-only origin main
 
-            chmod +x server.new
-            mv server server.previous 2>/dev/null || true
-            mv server.new server
+            cd server
+            mv bin/goose.new bin/goose
+            chmod +x bin/goose
+
+            echo "Running database migrations..."
+            ./bin/goose up
+
+            chmod +x bin/server.new
+            mv bin/server bin/server.previous 2>/dev/null || true
+            mv bin/server.new bin/server
 
             if ! sudo systemctl restart movie-server; then
               echo "Restart failed. Restoring previous executable."
-              if [ -f server.previous ]; then
-                mv -f server.previous server
+              if [ -f bin/server.previous ]; then
+                mv -f bin/server.previous bin/server
                 sudo systemctl restart movie-server || true
               fi
               exit 1
@@ -81,13 +97,13 @@ jobs:
 
             if ! sudo systemctl is-active --quiet movie-server; then
               echo "Service is not active. Restoring previous executable."
-              if [ -f server.previous ]; then
-                mv -f server.previous server
+              if [ -f bin/server.previous ]; then
+                mv -f bin/server.previous bin/server
                 sudo systemctl restart movie-server || true
               fi
               exit 1
             fi
 
-            rm -f server.previous
+            rm -f bin/server.previous
             echo "Deployment successful."
           REMOTE
