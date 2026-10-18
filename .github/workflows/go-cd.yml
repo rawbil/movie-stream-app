@@ -73,17 +73,32 @@ jobs:
             set -eu
 
             cd /opt/movie-trailer/movie-stream-app
-            git pull --ff-only origin main
+
+            cp -p server/bin/server server/bin/server.previous
+            if ! git restore --source=HEAD --worktree -- server/bin/server; then
+              echo "Could not restore the tracked binary before pulling. Restoring the live executable."
+              cp -p server/bin/server.previous server/bin/server
+              exit 1
+            fi
+
+            if ! git pull --ff-only origin main; then
+              echo "Git pull failed. Restoring the live executable."
+              cp -p server/bin/server.previous server/bin/server
+              exit 1
+            fi
 
             cd server
             mv bin/goose.new bin/goose
             chmod +x bin/goose
 
             echo "Running database migrations..."
-            ./bin/goose up
+            if ! ./bin/goose up; then
+              echo "Migrations failed. Restoring the live executable."
+              cp -p bin/server.previous bin/server
+              exit 1
+            fi
 
             chmod +x bin/server.new
-            mv bin/server bin/server.previous 2>/dev/null || true
             mv bin/server.new bin/server
 
             if ! sudo systemctl restart movie-server; then
