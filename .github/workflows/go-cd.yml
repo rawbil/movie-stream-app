@@ -1,0 +1,93 @@
+name: Deploy Go binary to ec2
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "server/**"
+      - ".github/workflows/go-cd.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "server/**"
+
+defaults:
+  run:
+    working-directory: ./server
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.3"
+          cache-dependency-path: server/go.sum
+
+      - name: Build Go Executable
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+           go build -o bin/server .
+
+      - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload executable to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          scp bin/server \
+            "$EC2_USER@$EC2_HOST:/opt/movie-trailer/movie-stream-app/server/bin/server.new"
+
+      - name: Replace executable and restart service
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh "$EC2_USER@$EC2_HOST" 'bash -s' <<'REMOTE'
+            set -eu
+
+            cd /opt/movie-trailer/movie-stream-app/server/bin/
+
+            chmod +x server.new
+            mv server server.previous 2>/dev/null || true
+            mv server.new server
+
+            if ! sudo systemctl restart movie-server; then
+              echo "Restart failed. Restoring previous executable."
+              if [ -f server.previous ]; then
+                mv -f server.previous server
+                sudo systemctl restart movie-server || true
+              fi
+              exit 1
+            fi
+
+            if ! sudo systemctl is-active --quiet movie-server; then
+              echo "Service is not active. Restoring previous executable."
+              if [ -f server.previous ]; then
+                mv -f server.previous server
+                sudo systemctl restart movie-server || true
+              fi
+              exit 1
+            fi
+
+            rm -f server.previous
+            echo "Deployment successful."
+          REMOTE
