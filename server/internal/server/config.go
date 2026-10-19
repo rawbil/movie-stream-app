@@ -35,7 +35,7 @@ func (api *Api) Mount() http.Handler {
 	// configure CORS
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{utils.ServerConfigFunc().ClientUrl},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCHd"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
