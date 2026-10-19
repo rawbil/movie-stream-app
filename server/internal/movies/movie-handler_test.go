@@ -111,7 +111,6 @@ func TestMovieHandlerRejectsInvalidInputs(t *testing.T) {
 		userID             any
 	}{
 		{"bad movie uuid", http.MethodGet, "/?public_id=bad", h.GetMovie, nil},
-		{"bad update movie body", http.MethodPut, "/", h.UpdateMovie, nil},
 		{"bad delete movie uuid", http.MethodDelete, "/bad", h.DeleteMovie, nil},
 		{"bad movies page", http.MethodGet, "/?page=abc", h.ListMovies, nil},
 		{"bad reviews page", http.MethodGet, "/bad?page=abc", h.GetMovieReviews, nil},
@@ -125,6 +124,12 @@ func TestMovieHandlerRejectsInvalidInputs(t *testing.T) {
 			}
 		})
 	}
+	t.Run("bad update movie body", func(t *testing.T) {
+		w := performMovieHandler(h.UpdateMovie, http.MethodPut, "/", "{", nil)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d want=%d body=%s", w.Code, http.StatusBadRequest, w.Body.String())
+		}
+	})
 }
 
 type failingMovieHandlerStub struct{ movieHandlerServiceStub }
