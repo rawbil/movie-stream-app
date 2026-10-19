@@ -95,39 +95,6 @@ func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (sql.R
 	)
 }
 
-const updateMovie = `-- name: UpdateMovie :execresult
-UPDATE movies
-SET imdb_id = ?, title = ?, poster_path = ?, youtube_id = ?
-WHERE public_id = ?
-`
-
-type UpdateMovieParams struct {
-	ImdbID     string         `json:"imdb_id"`
-	Title      string         `json:"title"`
-	PosterPath string         `json:"poster_path"`
-	YoutubeID  sql.NullString `json:"youtube_id"`
-	PublicID   []byte         `json:"public_id"`
-}
-
-func (q *Queries) UpdateMovie(ctx context.Context, arg UpdateMovieParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateMovie,
-		arg.ImdbID,
-		arg.Title,
-		arg.PosterPath,
-		arg.YoutubeID,
-		arg.PublicID,
-	)
-}
-
-const deleteMovie = `-- name: DeleteMovie :execresult
-DELETE FROM movies
-WHERE public_id = ?
-`
-
-func (q *Queries) DeleteMovie(ctx context.Context, publicID []byte) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteMovie, publicID)
-}
-
 const createMovieGenre = `-- name: CreateMovieGenre :execresult
 INSERT IGNORE INTO movie_genres(movie_id, genre_id)
 VALUES (?, ?)
@@ -239,6 +206,15 @@ WHERE genre_name = ?
 func (q *Queries) DeleteGenre(ctx context.Context, genreName string) error {
 	_, err := q.db.ExecContext(ctx, deleteGenre, genreName)
 	return err
+}
+
+const deleteMovie = `-- name: DeleteMovie :execresult
+DELETE FROM movies
+WHERE public_id = ?
+`
+
+func (q *Queries) DeleteMovie(ctx context.Context, publicID []byte) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMovie, publicID)
 }
 
 const getGenre = `-- name: GetGenre :one
@@ -812,7 +788,7 @@ GROUP BY
     m.admin_review,
     m.ranking_value, 
     m.ranking_name
-ORDER BY m.ranking_value, m.movie_id
+ORDER BY m.ranking_value IS NULL ASC, m.ranking_value IS NULL DESC, m.movie_id ASC -- do this so ranked movies appear before unranked
 LIMIT ?
 OFFSET ?
 `
@@ -927,6 +903,30 @@ type UpdateGenreParams struct {
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, updateGenre, arg.GenreName, arg.GenreID)
+}
+
+const updateMovie = `-- name: UpdateMovie :execresult
+UPDATE movies
+SET imdb_id = ?, title = ?, poster_path = ?, youtube_id = ?
+WHERE public_id = ?
+`
+
+type UpdateMovieParams struct {
+	ImdbID     string         `json:"imdb_id"`
+	Title      string         `json:"title"`
+	PosterPath string         `json:"poster_path"`
+	YoutubeID  sql.NullString `json:"youtube_id"`
+	PublicID   []byte         `json:"public_id"`
+}
+
+func (q *Queries) UpdateMovie(ctx context.Context, arg UpdateMovieParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateMovie,
+		arg.ImdbID,
+		arg.Title,
+		arg.PosterPath,
+		arg.YoutubeID,
+		arg.PublicID,
+	)
 }
 
 const updateMovieRankings = `-- name: UpdateMovieRankings :execresult

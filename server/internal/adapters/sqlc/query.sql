@@ -49,7 +49,7 @@ GROUP BY
     m.admin_review,
     m.ranking_value, 
     m.ranking_name
-ORDER BY m.ranking_value, m.movie_id
+ORDER BY m.ranking_value IS NULL ASC, m.ranking_value IS NULL DESC, m.movie_id ASC -- do this so ranked movies appear before unranked
 LIMIT ?
 OFFSET ?
 ;
