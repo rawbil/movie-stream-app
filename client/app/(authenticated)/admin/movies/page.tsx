@@ -94,8 +94,10 @@ export default function AdminMoviesPage() {
                 {genres.map(({ genre_name }) => <label key={genre_name} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><input type="checkbox" checked={form.genres.includes(genre_name)} onChange={() => toggleGenre(genre_name)} />{genre_name}</label>)}
               </div>
             )}
+            {genresQuery.isError && <p className="mt-2 text-sm text-destructive">Could not load genres. Refresh the page and try again.</p>}
+            {!genresQuery.isLoading && !genresQuery.isError && genres.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No genres are available yet.</p>}
           </fieldset>
-          <div className="sm:col-span-2"><Button disabled={!form.genres.length || createMutation.isPending || updateMutation.isPending}><Plus className="mr-1 size-4" />{form.public_id ? "Save changes" : "Create movie"}</Button></div>
+          <div className="sm:col-span-2"><Button type="submit" disabled={!form.genres.length || createMutation.isPending || updateMutation.isPending}><Plus className="mr-1 size-4" />{form.public_id ? "Save changes" : "Create movie"}</Button></div>
         </form>
       </section>
 
