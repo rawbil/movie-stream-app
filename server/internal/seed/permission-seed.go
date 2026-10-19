@@ -103,3 +103,34 @@ func SeedMovieRankings(db *sql.DB) error {
 
 	return nil
 }
+
+func SeedGenres(db *sql.DB) error {
+	genres := []string{
+		"Action",
+		"Adventure",
+		"Animation",
+		"Comedy",
+		"Crime",
+		"Documentary",
+		"Drama",
+		"Family",
+		"Fantasy",
+		"History",
+		"Horror",
+		"Music",
+		"Mystery",
+		"Romance",
+		"Science Fiction",
+		"Thriller",
+		"War",
+		"Western",
+	}
+
+	for _, genre := range genres {
+		if _, err := db.Exec(`INSERT IGNORE INTO genres(genre_name) VALUES (?)`, genre); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

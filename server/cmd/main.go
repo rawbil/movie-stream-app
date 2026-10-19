@@ -96,6 +96,11 @@ func main() {
 		return
 	}
 
+	if err := seed.SeedGenres(db); err != nil {
+		utils.Log.Error("Error seeding genres", "error", err)
+		return
+	}
+
 	if err := api.Run(api.Mount()); err != nil {
 		log.Println(err)
 		os.Exit(1)
