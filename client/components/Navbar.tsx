@@ -21,6 +21,7 @@ export default function Navbar() {
   const { setTheme } = useTheme();
   const pathname = usePathname()
 
+  const accessToken = useAuthStore((state) => state.accessToken);
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
   const user = useUserStore((state) => state.user);
   const clearUser = useUserStore((state) => state.clearUser);
@@ -29,14 +30,13 @@ export default function Navbar() {
   const logoutMutation = useMutation({
     mutationFn: LogoutUser,
     onSuccess: (data) => {
-      setAccessToken("");
+      setAccessToken(null);
       clearUser();
       router.push("/auth/login");
       toast.success(data.message);
     },
     onError: (error: any) => {
-      toast.error(error.data.error);
-      console.log(error.data.error);
+      toast.error(error.data?.error ?? "Could not log out. Please try again.");
     },
   });
 
@@ -81,9 +81,16 @@ export default function Navbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant={"destructive"} onClick={logoutFn}>
-          Logout
-        </Button>
+        {accessToken ? (
+          <Button variant="destructive" onClick={logoutFn} disabled={logoutMutation.isPending}>
+            {logoutMutation.isPending ? "Logging out…" : "Logout"}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" render={<Link href="/auth/login" />}>Login</Button>
+            <Button render={<Link href="/auth/register" />}>Register</Button>
+          </div>
+        )}
       </div>
     </nav>
   );
