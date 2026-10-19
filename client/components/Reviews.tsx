@@ -16,7 +16,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AddMovieReview } from "./mutations/movie.mutation";
 import toast from "react-hot-toast";
 import { useState } from "react";
-import { GetMovieReviews } from "./queries/movie.queries";
+import { GetMovie, GetMovieReviews } from "./queries/movie.queries";
+import type { Movie } from "@/lib/types";
 import {
   ChevronLeft,
   ChevronRight,
@@ -56,6 +57,9 @@ export default function Reviews({ publicId }: { publicId: string }) {
       setIsDialogOpen(false);
       setPage(1);
       queryClient.invalidateQueries({ queryKey: ["reviews", publicId] });
+      queryClient.invalidateQueries({ queryKey: ["movie", publicId] });
+      queryClient.invalidateQueries({ queryKey: ["all-movies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-movies"] });
       toast.success("Review added");
     },
     onError: () => {
@@ -72,6 +76,12 @@ export default function Reviews({ publicId }: { publicId: string }) {
     queryFn: () => GetMovieReviews(publicId, page),
     queryKey: ["reviews", publicId, page],
   });
+
+  const { data: movieResponse } = useQuery<{ movie: Movie }>({
+    queryFn: () => GetMovie(publicId),
+    queryKey: ["movie", publicId],
+  });
+  const rankingName = movieResponse?.movie.ranking_name;
 
   const reviews = reviewsData?.data.reviews ?? [];
   const totalReviews = reviewsData?.data.total_reviews ?? 0;
@@ -113,6 +123,11 @@ export default function Reviews({ publicId }: { publicId: string }) {
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Read what others thought, then add your own take.
               </p>
+              {rankingName?.Valid && rankingName.String ? (
+                <p className="mt-3 inline-flex rounded-md bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground">
+                  Community ranking: {rankingName.String}
+                </p>
+              ) : null}
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger

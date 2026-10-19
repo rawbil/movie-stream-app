@@ -24,6 +24,20 @@ export async function GetMovies(page: number) {
   }
 }
 
+export async function GetMovie(publicId: string) {
+  try {
+    const response = await Axios.get(
+      `/movies/one?public_id=${encodeURIComponent(publicId)}`,
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw error.response;
+    }
+    throw error;
+  }
+}
+
 export async function GetRecommendedMovies() {
   try {
     const response = await Axios.get("/movies/recommended");

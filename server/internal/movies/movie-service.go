@@ -443,6 +443,9 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, user_id int64
 	}
 
 	all_reviews = strings.Trim(all_reviews, ",")
+	if len(rankings) == 0 {
+		return errors.New("no rankings configured")
+	}
 
 	PROMPT_MESSAGE := fmt.Sprintf("Return a response using one of these words: %s. The response should be a single word and should not contain any other text. The response should be based on the following reviews: %s", ranking_names, all_reviews)
 
@@ -473,23 +476,23 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, user_id int64
 	if err != nil {
 		return err
 	}
+	if len(llm_response.Choices) == 0 {
+		return errors.New("LLM returned no ranking")
+	}
 
-	var ranking_value int32
-
-	for _, ranking := range rankings {
-		if ranking.RankingName == llm_response.Choices[0].Content {
-			ranking_value = (ranking.RankingValue)
-		}
+	matchedRanking, err := matchRanking(llm_response.Choices[0].Content, rankings)
+	if err != nil {
+		return err
 	}
 
 	if _, err := qtx.UpdateMovieRankings(ctx, repository.UpdateMovieRankingsParams{
 		PublicID: publicID[:],
 		RankingName: sql.NullString{
-			String: llm_response.Choices[0].Content,
+			String: matchedRanking.RankingName,
 			Valid:  true,
 		},
 		RankingValue: sql.NullInt32{
-			Int32: ranking_value,
+			Int32: matchedRanking.RankingValue,
 			Valid: true,
 		},
 	}); err != nil {
@@ -501,6 +504,16 @@ func (svc *Svc) AddReview(ctx context.Context, publicID uuid.UUID, user_id int64
 	}
 
 	return nil
+}
+
+func matchRanking(response string, rankings []repository.Ranking) (repository.Ranking, error) {
+	label := strings.TrimSpace(strings.Trim(response, " `\"'\t\r\n.,:;!?"))
+	for _, ranking := range rankings {
+		if strings.EqualFold(label, strings.TrimSpace(ranking.RankingName)) {
+			return ranking, nil
+		}
+	}
+	return repository.Ranking{}, fmt.Errorf("LLM returned unknown ranking %q", response)
 }
 
 // ! Get Recommended Movies
