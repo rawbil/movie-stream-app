@@ -56,7 +56,7 @@ func main() {
 		DBName:               utils.DBConfigFunc().Name,
 		ParseTime:            utils.DBConfigFunc().ParseTime,
 		AllowNativePasswords: true,
-		TLSConfig: "custom",
+		TLSConfig:            "custom",
 	}
 
 	dbConfig := &server.DBConfig{
