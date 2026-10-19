@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -21,6 +22,8 @@ type Service interface {
 	ListMovies(ctx context.Context, arg repository.ListMoviesParams) ([]repository.ListMoviesRow, int64, error)
 	GetMovie(ctx context.Context, publicID uuid.UUID) (repository.GetMovieRow, error)
 	CreateMovie(ctx context.Context, arg utils.CreateMovieParams) error
+	UpdateMovie(ctx context.Context, arg utils.UpdateMovieParams) error
+	DeleteMovie(ctx context.Context, publicID uuid.UUID) error
 	AddRankings(ctx context.Context, arg utils.AddRankingsParams) (error, string)
 	AddReview(ctx context.Context, publicID uuid.UUID, user_id int64, arg utils.AddReviewParams) error
 	GetMovieRecommendations(ctx context.Context, userID int64) ([]repository.GetRecommendedMoviesRow, error)
@@ -256,6 +259,86 @@ func (svc *Svc) CreateMovie(ctx context.Context, arg utils.CreateMovieParams) er
 
 	return nil
 
+}
+
+func (svc *Svc) UpdateMovie(ctx context.Context, arg utils.UpdateMovieParams) error {
+	publicID, err := uuid.Parse(arg.PublicID)
+	if err != nil || arg.ImdbID == "" || arg.Title == "" || arg.PosterPath == "" || len(arg.Genres) == 0 {
+		return utils.AllFieldsRequiredError
+	}
+	if len(arg.Title) < 3 {
+		return utils.MinTitleError
+	}
+	if len(arg.Title) > 50 {
+		return utils.MaxTitleError
+	}
+	posterURL, err := url.ParseRequestURI(arg.PosterPath)
+	if err != nil || (posterURL.Scheme != "http" && posterURL.Scheme != "https") || posterURL.Host == "" {
+		return utils.InvalidUrlError
+	}
+	tx, err := svc.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	qtx := svc.repository.WithTx(tx)
+
+	var movieID int64
+	if err := tx.QueryRowContext(ctx, `SELECT movie_id FROM movies WHERE public_id = ?`, publicID[:]).Scan(&movieID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NoRecordError
+		}
+		return err
+	}
+	var duplicateID int64
+	err = tx.QueryRowContext(ctx, `SELECT movie_id FROM movies WHERE imdb_id = ? AND public_id <> ?`, arg.ImdbID, publicID[:]).Scan(&duplicateID)
+	if err == nil {
+		return utils.MovieExistsError
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if _, err := qtx.UpdateMovie(ctx, repository.UpdateMovieParams{
+		ImdbID:     arg.ImdbID,
+		Title:      arg.Title,
+		PosterPath: arg.PosterPath,
+		YoutubeID:  sql.NullString{String: arg.YoutubeID, Valid: arg.YoutubeID != ""},
+		PublicID:   publicID[:],
+	}); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM movie_genres WHERE movie_id = ?`, movieID); err != nil {
+		return err
+	}
+	for _, name := range arg.Genres {
+		var genreID int64
+		name = strings.ToLower(strings.TrimSpace(name))
+		if err := tx.QueryRowContext(ctx, `SELECT genre_id FROM genres WHERE genre_name = ?`, name).Scan(&genreID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return utils.GenreMissing
+			}
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO movie_genres(movie_id, genre_id) VALUES (?, ?)`, movieID, genreID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (svc *Svc) DeleteMovie(ctx context.Context, publicID uuid.UUID) error {
+	result, err := svc.repository.DeleteMovie(ctx, publicID[:])
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return utils.NoRecordError
+	}
+	return nil
 }
 
 // ! Add Rankings

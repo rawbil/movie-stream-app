@@ -71,7 +71,7 @@ export default function Movie({ movie }: MovieProps) {
               <Button
                 onClick={() =>
                   router.push(
-                    `reviews/${movie.public_id}?poster_path=${movie.poster_path}&title=${movie.title}`,
+                    `/reviews/${movie.public_id}?poster_path=${encodeURIComponent(movie.poster_path)}&title=${encodeURIComponent(movie.title)}`,
                   )
                 }
               >

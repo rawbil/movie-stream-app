@@ -223,6 +223,48 @@ func (h *Handler) CreateMovie(c *gin.Context) {
 	})
 }
 
+func (h *Handler) UpdateMovie(c *gin.Context) {
+	var params utils.UpdateMovieParams
+	if err := c.ShouldBindJSON(&params); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "error decoding json body", err)
+		return
+	}
+	if err := h.Service.UpdateMovie(c.Request.Context(), params); err != nil {
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "movie not found", err)
+			return
+		}
+		if err == utils.MovieExistsError {
+			utils.ErrorResponse(c, http.StatusConflict, err.Error(), err)
+			return
+		}
+		if err == utils.GenreMissing || err == utils.InvalidUrlError || err == utils.AllFieldsRequiredError || err == utils.MinTitleError || err == utils.MaxTitleError {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "movie updated"})
+}
+
+func (h *Handler) DeleteMovie(c *gin.Context) {
+	publicID, err := uuid.Parse(c.Param("public_id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid public_id", err)
+		return
+	}
+	if err := h.Service.DeleteMovie(c.Request.Context(), publicID); err != nil {
+		if err == utils.NoRecordError {
+			utils.ErrorResponse(c, http.StatusNotFound, "movie not found", err)
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "movie deleted"})
+}
+
 // ! Add Rankings
 func (h *Handler) AddRankings(c *gin.Context) {
 	var params utils.AddRankingsParams

@@ -7,9 +7,11 @@ type UserStates = {
   //   updated_at: Date;
   user: {
     public_id: string;
+    username: string;
     email: string;
     created_at: Date;
     updated_at: Date;
+    role: string;
   };
 };
 
@@ -20,6 +22,7 @@ type UserActions = {
   //   setUpdatedAt: (updated_at: UserStates["updated_at"]) => void;
 
   setUser: (user: UserStates["user"]) => void;
+  clearUser: () => void;
 };
 
 export const useUserStore = create<UserStates & UserActions>()((set) => ({
@@ -33,9 +36,21 @@ export const useUserStore = create<UserStates & UserActions>()((set) => ({
   //   setUpdatedAt: (updated_at) => set({ updated_at: updated_at }),
   user: {
     public_id: "",
+    username: "",
     email: "",
     created_at: new Date(),
     updated_at: new Date(),
+    role: "",
   },
   setUser: (user) => set({ user }),
+  clearUser: () => set({
+    user: {
+      public_id: "",
+      username: "",
+      email: "",
+      created_at: new Date(),
+      updated_at: new Date(),
+      role: "",
+    },
+  }),
 }));

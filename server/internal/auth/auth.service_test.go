@@ -21,7 +21,7 @@ type MockService struct {
 	GetGenreFunc        func(ctx context.Context, genreName string) (repository.Genre, error)
 	CreateGenreFunc     func(ctx context.Context, genreName string) (sql.Result, error)
 	CreateUserGenreFunc func(ctx context.Context, arg repository.CreateUserGenreParams) (sql.Result, error)
-	GetUserByEmailFunc  func(ctx context.Context, email string) (repository.User, error)
+	GetUserByEmailFunc  func(ctx context.Context, email string) (repository.GetUserByEmailRow, error)
 
 	GetRefreshTokenFunc    func(ctx context.Context, userID int64) (repository.RefreshToken, error)
 	UpdateRefreshTokenFunc func(ctx context.Context, arg repository.UpdateRefreshTokenParams) (sql.Result, error)
@@ -54,7 +54,7 @@ func (m *MockService) CreateUserGenre(ctx context.Context, arg repository.Create
 	return m.CreateUserGenreFunc(ctx, arg)
 }
 
-func (m *MockService) GetUserByEmail(ctx context.Context, email string) (repository.User, error) {
+func (m *MockService) GetUserByEmail(ctx context.Context, email string) (repository.GetUserByEmailRow, error) {
 	return m.GetUserByEmailFunc(ctx, email)
 }
 
@@ -196,8 +196,8 @@ func TestRegisterValidation(t *testing.T) {
 
 func TestUserExistsError(t *testing.T) {
 	mock := &MockService{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (repository.User, error) {
-			return repository.User{}, utils.DuplicateRecordError
+		GetUserByEmailFunc: func(ctx context.Context, email string) (repository.GetUserByEmailRow, error) {
+			return repository.GetUserByEmailRow{}, utils.DuplicateRecordError
 		},
 	}
 
@@ -218,8 +218,8 @@ func TestUserExistsError(t *testing.T) {
 
 func TestSuccessfulRegistration(t *testing.T) {
 	mock := &MockService{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (repository.User, error) {
-			return repository.User{}, sql.ErrNoRows
+		GetUserByEmailFunc: func(ctx context.Context, email string) (repository.GetUserByEmailRow, error) {
+			return repository.GetUserByEmailRow{}, sql.ErrNoRows
 		},
 
 		CreateUserFunc: func(ctx context.Context, arg repository.CreateUserParams) (sql.Result, error) {

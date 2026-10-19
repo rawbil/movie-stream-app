@@ -93,6 +93,15 @@ WHERE public_id = ?;
 INSERT INTO movies(public_id, imdb_id, title, poster_path, youtube_id)
 VALUES(?, ?, ?, ?, ?);
 
+-- name: UpdateMovie :execresult
+UPDATE movies
+SET imdb_id = ?, title = ?, poster_path = ?, youtube_id = ?
+WHERE public_id = ?;
+
+-- name: DeleteMovie :execresult
+DELETE FROM movies
+WHERE public_id = ?;
+
 -- name: CreateMovieGenre :execresult
 INSERT IGNORE INTO movie_genres(movie_id, genre_id)
 VALUES (?, ?);
@@ -153,8 +162,21 @@ SELECT * FROM roles
 WHERE role = ?;
 
 -- name: GetUserByEmail :one
-SELECT * FROM users
-WHERE email = ?;
+SELECT
+u.user_id AS user_id,
+u.password AS password,
+u.public_id AS public_id,
+u.username AS username,
+u.email AS email,
+u.created_at AS created_at,
+u.updated_at AS updated_at,
+r.role AS role
+ FROM users u
+INNER JOIN user_roles ur
+ON u.user_id = ur.user_id
+INNER JOIN roles r
+ON ur.role_id = r.role_id
+WHERE email=?;
 
 -- name: GetUserByID :one
 SELECT * FROM users

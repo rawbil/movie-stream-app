@@ -34,6 +34,12 @@ func (movieHandlerServiceStub) GetMovie(context.Context, uuid.UUID) (repository.
 func (movieHandlerServiceStub) CreateMovie(context.Context, utils.CreateMovieParams) error {
 	return nil
 }
+func (movieHandlerServiceStub) UpdateMovie(context.Context, utils.UpdateMovieParams) error {
+	return nil
+}
+func (movieHandlerServiceStub) DeleteMovie(context.Context, uuid.UUID) error {
+	return nil
+}
 func (movieHandlerServiceStub) AddRankings(context.Context, utils.AddRankingsParams) (error, string) {
 	return nil, ""
 }
@@ -80,6 +86,8 @@ func TestMovieHandlers(t *testing.T) {
 		{"list movies", http.MethodGet, "/?page=2", "", h.ListMovies, nil, http.StatusOK},
 		{"get movie", http.MethodGet, "/?public_id=" + id, "", h.GetMovie, nil, http.StatusOK},
 		{"create movie", http.MethodPost, "/", `{"imdb_id":"tt123","title":"A film","poster_path":"https://example.com/poster.jpg","genres":["drama"]}`, h.CreateMovie, nil, http.StatusOK},
+		{"update movie", http.MethodPut, "/", `{"public_id":"` + id + `","imdb_id":"tt123","title":"A film","poster_path":"https://example.com/poster.jpg","genres":["drama"]}`, h.UpdateMovie, nil, http.StatusOK},
+		{"delete movie", http.MethodDelete, "/" + id, "", h.DeleteMovie, nil, http.StatusOK},
 		{"add rankings", http.MethodPost, "/", `{"rankings":[{"ranking_name":"great","ranking_value":5}]}`, h.AddRankings, nil, http.StatusOK},
 		{"add review", http.MethodPost, "/" + id, `{"review":"A thoughtful review"}`, h.AddMovieReview, int64(42), http.StatusOK},
 		{"recommendations", http.MethodGet, "/", "", h.GetMovieRecommendations, int64(42), http.StatusOK},
@@ -103,6 +111,8 @@ func TestMovieHandlerRejectsInvalidInputs(t *testing.T) {
 		userID             any
 	}{
 		{"bad movie uuid", http.MethodGet, "/?public_id=bad", h.GetMovie, nil},
+		{"bad update movie body", http.MethodPut, "/", h.UpdateMovie, nil},
+		{"bad delete movie uuid", http.MethodDelete, "/bad", h.DeleteMovie, nil},
 		{"bad movies page", http.MethodGet, "/?page=abc", h.ListMovies, nil},
 		{"bad reviews page", http.MethodGet, "/bad?page=abc", h.GetMovieReviews, nil},
 		{"review without user", http.MethodPost, "/" + uuid.NewString(), h.AddMovieReview, nil},

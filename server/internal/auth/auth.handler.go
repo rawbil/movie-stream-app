@@ -163,6 +163,7 @@ func (h *Handler) LoginUser(c *gin.Context) {
 		"email":      user.Email,
 		"created_at": user.CreatedAt,
 		"updated_at": user.UpdatedAt,
+		"role": user.Role,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -281,6 +282,7 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 		"email":      user.Email,
 		"created_at": user.CreatedAt,
 		"updated_at": user.UpdatedAt,
+		"role":       user.Role,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

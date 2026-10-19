@@ -25,6 +25,7 @@ import {
 import { GetMovieGenres } from "./queries/movie.queries";
 import { ScrollArea } from "./ui/scroll-area";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type Values = {
   username: string;
@@ -44,6 +45,7 @@ export default function Register() {
   const [selected_genres, setSelectedGenres] = useState<string[]>([]);
   const [isPassword, setIsPassword] = useState(true);
   const [iscPassword, setIsCPassword] = useState(true);
+  const router = useRouter()
 
   const {
     error,
@@ -59,6 +61,7 @@ export default function Register() {
     onSuccess: (data) => {
       setErrorMsg("")
       toast.success(data.message)
+      router.push("/auth/login")
     },
     onError: (error: any) => {
       setErrorMsg(

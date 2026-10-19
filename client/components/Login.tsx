@@ -37,9 +37,11 @@ export default function Login() {
       setAccessToken(data.access_token);
       setUser({
         public_id: data.user.public_id,
+        username: data.user.username,
         email: data.user.email,
         created_at: data.user.created_at,
         updated_at: data.user.updated_at,
+        role: data.user.role,
       });
 
       router.push("/");

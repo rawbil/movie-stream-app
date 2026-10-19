@@ -16,23 +16,23 @@ import (
 
 type handlerServiceStub struct {
 	register func(context.Context, utils.CreateUserParams) error
-	login    func(context.Context, utils.LoginParams) (repository.User, string, string, error)
+	login    func(context.Context, utils.LoginParams) (repository.GetUserByEmailRow, string, string, error)
 	role     func(context.Context, string) (sql.Result, error)
 	logout   func(context.Context, int64) error
-	refresh  func(context.Context, string) (string, string, repository.User, error)
+	refresh  func(context.Context, string) (string, string, repository.GetUserByEmailRow, error)
 }
 
 func (s handlerServiceStub) RegisterUser(ctx context.Context, p utils.CreateUserParams) error {
 	return s.register(ctx, p)
 }
-func (s handlerServiceStub) LoginUser(ctx context.Context, p utils.LoginParams) (repository.User, string, string, error) {
+func (s handlerServiceStub) LoginUser(ctx context.Context, p utils.LoginParams) (repository.GetUserByEmailRow, string, string, error) {
 	return s.login(ctx, p)
 }
 func (s handlerServiceStub) CreateRole(ctx context.Context, role string) (sql.Result, error) {
 	return s.role(ctx, role)
 }
 func (s handlerServiceStub) Logout(ctx context.Context, id int64) error { return s.logout(ctx, id) }
-func (s handlerServiceStub) RefreshTokens(ctx context.Context, token string) (string, string, repository.User, error) {
+func (s handlerServiceStub) RefreshTokens(ctx context.Context, token string) (string, string, repository.GetUserByEmailRow, error) {
 	return s.refresh(ctx, token)
 }
 
@@ -67,15 +67,15 @@ func TestAuthHandlers(t *testing.T) {
 	})
 
 	t.Run("login success and service error", func(t *testing.T) {
-		h := NewHandler(handlerServiceStub{login: func(context.Context, utils.LoginParams) (repository.User, string, string, error) {
-			return repository.User{Email: "sam@example.com"}, "access", "refresh", nil
+		h := NewHandler(handlerServiceStub{login: func(context.Context, utils.LoginParams) (repository.GetUserByEmailRow, string, string, error) {
+			return repository.GetUserByEmailRow{Email: "sam@example.com", Role: "admin"}, "access", "refresh", nil
 		}})
 		w := performAuthHandler(h.LoginUser, http.MethodPost, "/", `{"email":"sam@example.com","password":"pass"}`, nil)
-		if w.Code != http.StatusOK || len(w.Result().Cookies()) != 1 {
+		if w.Code != http.StatusOK || len(w.Result().Cookies()) != 1 || !strings.Contains(w.Body.String(), `"role":"admin"`) {
 			t.Fatalf("status=%d cookies=%v", w.Code, w.Result().Cookies())
 		}
-		h = NewHandler(handlerServiceStub{login: func(context.Context, utils.LoginParams) (repository.User, string, string, error) {
-			return repository.User{}, "", "", utils.NoRecordError
+		h = NewHandler(handlerServiceStub{login: func(context.Context, utils.LoginParams) (repository.GetUserByEmailRow, string, string, error) {
+			return repository.GetUserByEmailRow{}, "", "", utils.NoRecordError
 		}})
 		if got := performAuthHandler(h.LoginUser, http.MethodPost, "/", `{"email":"sam@example.com","password":"pass"}`, nil).Code; got != http.StatusBadRequest {
 			t.Fatalf("service error status=%d", got)
@@ -105,8 +105,8 @@ func TestAuthHandlers(t *testing.T) {
 	})
 
 	t.Run("refresh token missing and success", func(t *testing.T) {
-		h := NewHandler(handlerServiceStub{refresh: func(context.Context, string) (string, string, repository.User, error) {
-			return "access", "new-refresh", repository.User{}, nil
+		h := NewHandler(handlerServiceStub{refresh: func(context.Context, string) (string, string, repository.GetUserByEmailRow, error) {
+			return "access", "new-refresh", repository.GetUserByEmailRow{Role: "ADMIN"}, nil
 		}})
 		if got := performAuthHandler(h.RefreshTokens, http.MethodPost, "/", "", nil).Code; got != http.StatusUnauthorized {
 			t.Fatalf("missing cookie status=%d", got)
@@ -114,11 +114,11 @@ func TestAuthHandlers(t *testing.T) {
 		settings := getRefreshCookieSettings()
 		cookie := &http.Cookie{Name: settings.name, Value: "refresh"}
 		w := performAuthHandler(h.RefreshTokens, http.MethodPost, "/", "", nil, cookie)
-		if w.Code != http.StatusOK || len(w.Result().Cookies()) != 1 {
+		if w.Code != http.StatusOK || len(w.Result().Cookies()) != 1 || !strings.Contains(w.Body.String(), `"role":"ADMIN"`) {
 			t.Fatalf("refresh status=%d cookies=%v", w.Code, w.Result().Cookies())
 		}
-		h = NewHandler(handlerServiceStub{refresh: func(context.Context, string) (string, string, repository.User, error) {
-			return "", "", repository.User{}, errors.New("failure")
+		h = NewHandler(handlerServiceStub{refresh: func(context.Context, string) (string, string, repository.GetUserByEmailRow, error) {
+			return "", "", repository.GetUserByEmailRow{}, errors.New("failure")
 		}})
 		if got := performAuthHandler(h.RefreshTokens, http.MethodPost, "/", "", nil, cookie).Code; got != http.StatusUnauthorized {
 			t.Fatalf("service error status=%d", got)

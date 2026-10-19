@@ -95,6 +95,39 @@ func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (sql.R
 	)
 }
 
+const updateMovie = `-- name: UpdateMovie :execresult
+UPDATE movies
+SET imdb_id = ?, title = ?, poster_path = ?, youtube_id = ?
+WHERE public_id = ?
+`
+
+type UpdateMovieParams struct {
+	ImdbID     string         `json:"imdb_id"`
+	Title      string         `json:"title"`
+	PosterPath string         `json:"poster_path"`
+	YoutubeID  sql.NullString `json:"youtube_id"`
+	PublicID   []byte         `json:"public_id"`
+}
+
+func (q *Queries) UpdateMovie(ctx context.Context, arg UpdateMovieParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateMovie,
+		arg.ImdbID,
+		arg.Title,
+		arg.PosterPath,
+		arg.YoutubeID,
+		arg.PublicID,
+	)
+}
+
+const deleteMovie = `-- name: DeleteMovie :execresult
+DELETE FROM movies
+WHERE public_id = ?
+`
+
+func (q *Queries) DeleteMovie(ctx context.Context, publicID []byte) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMovie, publicID)
+}
+
 const createMovieGenre = `-- name: CreateMovieGenre :execresult
 INSERT IGNORE INTO movie_genres(movie_id, genre_id)
 VALUES (?, ?)
@@ -340,18 +373,6 @@ func (q *Queries) GetMovieInternal(ctx context.Context, publicID []byte) (Movie,
 	return i, err
 }
 
-const getMovieReviews = `-- name: GetMovieReviews :many
-SELECT mr.review, mr.created_at, u.username, BIN_TO_UUID(m.public_id) as movie_public_id FROM movie_reviews mr
-JOIN users u
-ON mr.user_id = u.user_id
-JOIN movies m
-ON m.movie_id = mr.movie_id
-WHERE m.public_id = ?
-ORDER BY mr.updated_at
-LIMIT ?
-OFFSET ?
-`
-
 const getMovieReviewCount = `-- name: GetMovieReviewCount :one
 SELECT COUNT(*) FROM movie_reviews mr
 JOIN movies m
@@ -365,6 +386,18 @@ func (q *Queries) GetMovieReviewCount(ctx context.Context, publicID []byte) (int
 	err := row.Scan(&count)
 	return count, err
 }
+
+const getMovieReviews = `-- name: GetMovieReviews :many
+SELECT mr.review, mr.created_at, u.username, BIN_TO_UUID(m.public_id) as movie_public_id FROM movie_reviews mr
+JOIN users u
+ON mr.user_id = u.user_id
+JOIN movies m
+ON m.movie_id = mr.movie_id
+WHERE m.public_id = ?
+ORDER BY mr.updated_at
+LIMIT ?
+OFFSET ?
+`
 
 type GetMovieReviewsParams struct {
 	PublicID []byte `json:"public_id"`
@@ -649,21 +682,46 @@ func (q *Queries) GetUniqueMovie(ctx context.Context, imdbID string) (Movie, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT user_id, public_id, username, email, password, created_at, updated_at FROM users
-WHERE email = ?
+SELECT
+u.user_id AS user_id,
+u.password AS password,
+u.public_id AS public_id,
+u.username AS username,
+u.email AS email,
+u.created_at AS created_at,
+u.updated_at AS updated_at,
+r.role AS role
+ FROM users u
+INNER JOIN user_roles ur
+ON u.user_id = ur.user_id
+INNER JOIN roles r
+ON ur.role_id = r.role_id
+WHERE email=?
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	UserID    int64     `json:"user_id"`
+	Password  string    `json:"password"`
+	PublicID  []byte    `json:"public_id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Role      string    `json:"role"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.UserID,
+		&i.Password,
 		&i.PublicID,
 		&i.Username,
 		&i.Email,
-		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }

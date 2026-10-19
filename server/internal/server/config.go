@@ -86,6 +86,8 @@ func (api *Api) Mount() http.Handler {
 
 	//! /api/v1/movies
 	movies.POST("/create", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionCreateMovie), movieHandler.CreateMovie)
+	movies.PUT("/update", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionUpdateMovie), movieHandler.UpdateMovie)
+	movies.DELETE("/delete/:public_id", authutils.AuthMiddleware(*repo), middlewares.RoleMiddleware(*repo, authorization.PermissionDeleteMovie), movieHandler.DeleteMovie)
 	movies.GET("/one", movieHandler.GetMovie)
 
 	return r

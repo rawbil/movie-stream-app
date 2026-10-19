@@ -19,9 +19,11 @@ type RefreshResponse = {
   access_token: string;
   user: {
     public_id: string;
+    username: string;
     email: string;
     created_at: Date;
     updated_at: Date;
+    role: string;
   };
 };
 
@@ -37,9 +39,11 @@ async function refreshAccessToken() {
         useAuthStore.getState().setAccessToken(data.access_token);
         useUserStore.getState().setUser({
           public_id: data.user.public_id,
+          username: data.user.username,
           email: data.user.email,
           created_at: data.user.created_at,
           updated_at: data.user.updated_at,
+          role: data.user.role,
         });
 
         return data.access_token;
@@ -92,6 +96,7 @@ Axios.interceptors.response.use(
         return Axios(originalRequest); //retry original request
       } catch (err) {
         useAuthStore.getState().setAccessToken(null);
+        useUserStore.getState().clearUser();
         if (
           window.location.pathname !== "/auth/login" &&
           window.location.pathname !== "/auth/register"

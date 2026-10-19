@@ -16,6 +16,8 @@ func SeedPermissions(db *sql.DB) error {
 		authorization.PermissionAddRankings,
 		authorization.PermissionAddReview,
 		authorization.PermissionCreateMovie,
+		authorization.PermissionUpdateMovie,
+		authorization.PermissionDeleteMovie,
 		authorization.PermissionGetReviews,
 	}
 

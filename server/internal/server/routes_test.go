@@ -64,6 +64,8 @@ func TestMountedRoutes(t *testing.T) {
 		"GET /api/v1/movies/reviews/:public_id",
 		"GET /api/v1/movies/recommended",
 		"POST /api/v1/movies/create",
+		"PUT /api/v1/movies/update",
+		"DELETE /api/v1/movies/delete/:public_id",
 		"GET /api/v1/movies/one",
 	}
 	if len(got) != len(want) {
@@ -85,6 +87,8 @@ func TestProtectedRoutesRequireAuthentication(t *testing.T) {
 		{http.MethodPost, "/api/v1/movies/genres/add"},
 		{http.MethodPatch, "/api/v1/movies/genres/update"},
 		{http.MethodPost, "/api/v1/movies/add-rankings"},
+		{http.MethodPut, "/api/v1/movies/update"},
+		{http.MethodDelete, "/api/v1/movies/delete/550e8400-e29b-41d4-a716-446655440000"},
 		{http.MethodPost, "/api/v1/movies/add-review/550e8400-e29b-41d4-a716-446655440000"},
 		{http.MethodGet, "/api/v1/movies/reviews/550e8400-e29b-41d4-a716-446655440000"},
 		{http.MethodGet, "/api/v1/movies/recommended"},

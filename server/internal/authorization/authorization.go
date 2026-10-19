@@ -7,12 +7,14 @@ var (
 
 const (
 	PermissionCreateRole = "role:create"
-	PermissionAddGenre = "genre:add"
+	PermissionAddGenre    = "genre:add"
 	PermissionUpdateGenre  = "genre:update"
-	PermissionAddRankings = "rankings:add"
-	PermissionAddReview = "reviews:add"
+	PermissionAddRankings  = "rankings:add"
+	PermissionAddReview    = "reviews:add"
 	PermissionGetReviews = "reviews:get"
 	PermissionCreateMovie = "movie:create"
+	PermissionUpdateMovie = "movie:update"
+	PermissionDeleteMovie = "movie:delete"
 )
 
 var RolePermissions = map[string][]string{
@@ -24,6 +26,8 @@ var RolePermissions = map[string][]string{
 		PermissionAddReview,
 		PermissionGetReviews,
 		PermissionCreateMovie,
+		PermissionUpdateMovie,
+		PermissionDeleteMovie,
 	},
 	UserRole: {
 		PermissionAddReview,

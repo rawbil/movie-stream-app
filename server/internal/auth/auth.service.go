@@ -16,13 +16,13 @@ import (
 type Service interface {
 	RegisterUser(ctx context.Context, arg utils.CreateUserParams) error
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
-	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error)
+	LoginUser(ctx context.Context, arg utils.LoginParams) (repository.GetUserByEmailRow, string, string, error)
 	Logout(ctx context.Context, user_id int64) error
-	RefreshTokens(ctx context.Context, rt string) (string, string, repository.User, error)
+	RefreshTokens(ctx context.Context, rt string) (string, string, repository.GetUserByEmailRow, error)
 }
 
 type Repository interface {
-	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
+	GetUserByEmail(ctx context.Context, email string) (repository.GetUserByEmailRow, error)
 	CreateUser(ctx context.Context, arg repository.CreateUserParams) (sql.Result, error)
 	GetRole(ctx context.Context, role string) (repository.Role, error)
 	CreateRole(ctx context.Context, role string) (sql.Result, error)
@@ -197,39 +197,39 @@ func (svc *Svc) RegisterUser(ctx context.Context, arg utils.CreateUserParams) er
 }
 
 // ! Login
-func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repository.User, string, string, error) {
+func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repository.GetUserByEmailRow, string, string, error) {
 	//~ Validate fields
 	if err := utils.ValidateLoginUser(arg); err != nil {
 		if utils.ValidationErrors("required", err) {
-			return repository.User{}, "", "", utils.AllFieldsRequiredError
+			return repository.GetUserByEmailRow{}, "", "", utils.AllFieldsRequiredError
 		}
 
 		if utils.ValidationErrors("email", err) {
-			return repository.User{}, "", "", utils.InvalidEmailFormat
+			return repository.GetUserByEmailRow{}, "", "", utils.InvalidEmailFormat
 		}
 
-		return repository.User{}, "", "", err
+		return repository.GetUserByEmailRow{}, "", "", err
 	}
 
 	//~ Get user with email
 	user, err := svc.repository.GetUserByEmail(ctx, arg.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.User{}, "", "", utils.NoRecordError
+			return repository.GetUserByEmailRow{}, "", "", utils.NoRecordError
 		}
-		return repository.User{}, "", "", err
+		return repository.GetUserByEmailRow{}, "", "", err
 	}
 
 	//~ Compare passwords
 	if err := authutils.ComparePasswords(user.Password, arg.Password); err != nil {
-		return repository.User{}, "", "", utils.IncorrectPassword
+		return repository.GetUserByEmailRow{}, "", "", utils.IncorrectPassword
 	}
 
 	//~ Generate JWT Tokens
 	jwt_secret := utils.ServerConfigFunc().JwtSecret
 	access_token, refresh_token, _, _, err := authutils.GenerateAuthToken(user.UserID, jwt_secret)
 	if err != nil {
-		return repository.User{}, "", "", err
+		return repository.GetUserByEmailRow{}, "", "", err
 	}
 
 	//~ Hash refresh token
@@ -238,14 +238,14 @@ func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repositor
 	//~ Create refresh token record if not exist, or update if user already present
 	if _, err := svc.repository.GetRefreshToken(ctx, user.UserID); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return repository.User{}, "", "", err
+			return repository.GetUserByEmailRow{}, "", "", err
 		}
 		// if record does not exist, create it(First-time login)
 		if _, err := svc.repository.CreateRefreshToken(ctx, repository.CreateRefreshTokenParams{
 			UserID:      user.UserID,
 			HashedToken: hashed_rt,
 		}); err != nil {
-			return repository.User{}, "", "", err
+			return repository.GetUserByEmailRow{}, "", "", err
 		}
 	} else {
 		// if record exists, update it
@@ -254,7 +254,7 @@ func (svc *Svc) LoginUser(ctx context.Context, arg utils.LoginParams) (repositor
 			HashedToken: hashed_rt,
 			Revoked:     false,
 		}); err != nil {
-			return repository.User{}, "", "", err
+			return repository.GetUserByEmailRow{}, "", "", err
 		}
 	}
 
@@ -310,15 +310,15 @@ func (svc *Svc) Logout(ctx context.Context, user_id int64) error {
 }
 
 // ! Refresh Tokens
-func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, repository.User, error) {
+func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, repository.GetUserByEmailRow, error) {
 	if rt == "" {
-		return "", "", repository.User{}, utils.AllFieldsRequiredError
+		return "", "", repository.GetUserByEmailRow{}, utils.AllFieldsRequiredError
 	}
 
 	//~ Validate refresh token
 	claims, err := authutils.ValidateRefreshToken(rt)
 	if err != nil {
-		return "", "", repository.User{}, err
+		return "", "", repository.GetUserByEmailRow{}, err
 	}
 
 	user_id := claims.UserID
@@ -327,36 +327,40 @@ func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, r
 	user, err := svc.repository.GetUserByID(ctx, user_id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", "", repository.User{}, utils.GenreMissing
+			return "", "", repository.GetUserByEmailRow{}, utils.GenreMissing
 		}
-		return "", "", repository.User{}, err
+		return "", "", repository.GetUserByEmailRow{}, err
+	}
+	authUser, err := svc.repository.GetUserByEmail(ctx, user.Email)
+	if err != nil {
+		return "", "", repository.GetUserByEmailRow{}, err
 	}
 
 	//~ Get stored refresh token
 	hashed_rt, err := svc.repository.GetRefreshToken(ctx, user_id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", "", repository.User{}, utils.NoRecordError
+			return "", "", repository.GetUserByEmailRow{}, utils.NoRecordError
 		}
-		return "", "", repository.User{}, err
+		return "", "", repository.GetUserByEmailRow{}, err
 	}
 
 	//~ Ensure token is not revoked
 	if hashed_rt.Revoked {
-		return "", "", repository.User{}, utils.TokenRevoked
+		return "", "", repository.GetUserByEmailRow{}, utils.TokenRevoked
 	}
 
 	//~ Compare tokens
 	hashed_token := authutils.RefreshTokenHash(rt)
 	if subtle.ConstantTimeCompare([]byte(hashed_rt.HashedToken), []byte(hashed_token)) != 1 {
-		return "", "", repository.User{}, utils.InvalidToken
+		return "", "", repository.GetUserByEmailRow{}, utils.InvalidToken
 	}
 
 	//~ Generate new tokens
 	secret := utils.ServerConfigFunc().JwtSecret
 	access_token, refresh_token, _, _, err := authutils.GenerateAuthToken(user_id, secret)
 	if err != nil {
-		return "", "", repository.User{}, err
+		return "", "", repository.GetUserByEmailRow{}, err
 	}
 
 	new_hash := authutils.RefreshTokenHash(refresh_token)
@@ -367,8 +371,8 @@ func (svc *Svc) RefreshTokens(ctx context.Context, rt string) (string, string, r
 		UserID:      user_id,
 		Revoked:     false,
 	}); err != nil {
-		return "", "", repository.User{}, err
+		return "", "", repository.GetUserByEmailRow{}, err
 	}
 
-	return access_token, refresh_token, user, nil
+	return access_token, refresh_token, authUser, nil
 }

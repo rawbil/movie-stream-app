@@ -13,6 +13,7 @@ import { Moon, Sun } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { LogoutUser } from "./mutations/auth.mutation";
 import { useAuthStore } from "@/app/auth/(store)/auth.store";
+import { useUserStore } from "@/app/auth/(store)/user.store";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -21,12 +22,15 @@ export default function Navbar() {
   const pathname = usePathname()
 
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const user = useUserStore((state) => state.user);
+  const clearUser = useUserStore((state) => state.clearUser);
   const router = useRouter();
 
   const logoutMutation = useMutation({
     mutationFn: LogoutUser,
     onSuccess: (data) => {
       setAccessToken("");
+      clearUser();
       router.push("/auth/login");
       toast.success(data.message);
     },
@@ -52,6 +56,7 @@ export default function Navbar() {
         <li className={`font-medium hover:underline px-3 ${pathname.startsWith("/recommended") && "underline"}`}>
           <Link href={"/recommended"}>Recommended Movies</Link>
         </li>
+        {user.role.toUpperCase() === "ADMIN" && <li className={`font-medium hover:underline px-3 ${pathname.startsWith("/admin") && "underline"}`}><Link href="/admin">Admin</Link></li>}
       </ul>
       <div>
         <DropdownMenu>

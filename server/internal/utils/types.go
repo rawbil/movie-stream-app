@@ -18,6 +18,15 @@ type CreateMovieParams struct {
 	Genres     []string `json:"genres"`
 }
 
+type UpdateMovieParams struct {
+	PublicID   string   `json:"public_id" validate:"required,uuid"`
+	ImdbID     string   `json:"imdb_id" validate:"required"`
+	Title      string   `json:"title" validate:"required,min=3,max=100"`
+	PosterPath string   `json:"poster_path" validate:"required,url"`
+	YoutubeID  string   `json:"youtube_id"`
+	Genres     []string `json:"genres" validate:"required,min=1"`
+}
+
 type CreateUserParams struct {
 	Username  string   `json:"username" validate:"required,min=3,max=20"`
 	Email     string   `json:"email" validate:"required,email"`

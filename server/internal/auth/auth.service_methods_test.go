@@ -19,7 +19,7 @@ func TestAuthServiceValidationAndNotFoundPaths(t *testing.T) {
 	})
 
 	t.Run("login maps missing user", func(t *testing.T) {
-		mock := &MockService{GetUserByEmailFunc: func(context.Context, string) (repository.User, error) { return repository.User{}, sql.ErrNoRows }}
+		mock := &MockService{GetUserByEmailFunc: func(context.Context, string) (repository.GetUserByEmailRow, error) { return repository.GetUserByEmailRow{}, sql.ErrNoRows }}
 		svc := NewService(mock, nil)
 		_, _, _, err := svc.LoginUser(context.Background(), utils.LoginParams{Email: "user@example.com", Password: "password"})
 		if err != utils.NoRecordError {
